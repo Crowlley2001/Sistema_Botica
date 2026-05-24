@@ -1,0 +1,246 @@
+﻿namespace CapaPresentacion.Factura
+{
+    partial class frm_Mes_Doc
+    {
+        /// <summary>
+        /// Required designer variable.
+        /// </summary>
+        private System.ComponentModel.IContainer components = null;
+
+        /// <summary>
+        /// Clean up any resources being used.
+        /// </summary>
+        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null))
+            {
+                components.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        #region Windows Form Designer generated code
+
+        /// <summary>
+        /// Required method for Designer support - do not modify
+        /// the contents of this method with the code editor.
+        /// </summary>
+        private void InitializeComponent()
+        {
+            this.components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(frm_Mes_Doc));
+            this.pnl_titulo = new System.Windows.Forms.Panel();
+            this.pictureBox1 = new System.Windows.Forms.PictureBox();
+            this.label1 = new System.Windows.Forms.Label();
+            this.bunifuElipse1 = new Bunifu.Framework.UI.BunifuElipse(this.components);
+            this.btrn_aceptar = new Guna.UI2.WinForms.Guna2Button();
+            this.btn_cancelar = new Guna.UI2.WinForms.Guna2Button();
+            this.dtp_mes = new Guna.UI2.WinForms.Guna2DateTimePicker();
+            this.label20 = new System.Windows.Forms.Label();
+            this.label2 = new System.Windows.Forms.Label();
+            this.cbo_tipoDoC = new Guna.UI2.WinForms.Guna2ComboBox();
+            this.kryptonBorderEdge1 = new Krypton.Toolkit.KryptonBorderEdge();
+            this.pnl_titulo.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
+            this.SuspendLayout();
+            // 
+            // pnl_titulo
+            // 
+            this.pnl_titulo.BackColor = System.Drawing.Color.DarkOrchid;
+            this.pnl_titulo.Controls.Add(this.pictureBox1);
+            this.pnl_titulo.Controls.Add(this.label1);
+            this.pnl_titulo.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnl_titulo.Location = new System.Drawing.Point(0, 0);
+            this.pnl_titulo.Name = "pnl_titulo";
+            this.pnl_titulo.Size = new System.Drawing.Size(414, 88);
+            this.pnl_titulo.TabIndex = 802;
+            this.pnl_titulo.MouseMove += new System.Windows.Forms.MouseEventHandler(this.pnl_titulo_MouseMove);
+            // 
+            // pictureBox1
+            // 
+            this.pictureBox1.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox1.Image")));
+            this.pictureBox1.Location = new System.Drawing.Point(169, 6);
+            this.pictureBox1.Name = "pictureBox1";
+            this.pictureBox1.Size = new System.Drawing.Size(48, 48);
+            this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.AutoSize;
+            this.pictureBox1.TabIndex = 787;
+            this.pictureBox1.TabStop = false;
+            // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label1.ForeColor = System.Drawing.Color.White;
+            this.label1.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.label1.Location = new System.Drawing.Point(141, 57);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(117, 25);
+            this.label1.TabIndex = 786;
+            this.label1.Text = "Consultas";
+            // 
+            // bunifuElipse1
+            // 
+            this.bunifuElipse1.ElipseRadius = 12;
+            this.bunifuElipse1.TargetControl = this;
+            // 
+            // btrn_aceptar
+            // 
+            this.btrn_aceptar.BackColor = System.Drawing.Color.Transparent;
+            this.btrn_aceptar.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(78)))), ((int)(((byte)(151)))), ((int)(((byte)(191)))));
+            this.btrn_aceptar.BorderRadius = 20;
+            this.btrn_aceptar.BorderThickness = 1;
+            this.btrn_aceptar.DisabledState.BorderColor = System.Drawing.Color.DarkGray;
+            this.btrn_aceptar.DisabledState.CustomBorderColor = System.Drawing.Color.DarkGray;
+            this.btrn_aceptar.DisabledState.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(169)))), ((int)(((byte)(169)))), ((int)(((byte)(169)))));
+            this.btrn_aceptar.DisabledState.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(141)))), ((int)(((byte)(141)))), ((int)(((byte)(141)))));
+            this.btrn_aceptar.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(78)))), ((int)(((byte)(151)))), ((int)(((byte)(191)))));
+            this.btrn_aceptar.Font = new System.Drawing.Font("Segoe UI", 14F);
+            this.btrn_aceptar.ForeColor = System.Drawing.Color.White;
+            this.btrn_aceptar.ImageSize = new System.Drawing.Size(30, 30);
+            this.btrn_aceptar.Location = new System.Drawing.Point(228, 316);
+            this.btrn_aceptar.Name = "btrn_aceptar";
+            this.btrn_aceptar.Padding = new System.Windows.Forms.Padding(10, 0, 0, 0);
+            this.btrn_aceptar.Size = new System.Drawing.Size(137, 39);
+            this.btrn_aceptar.TabIndex = 805;
+            this.btrn_aceptar.Text = "Aceptar";
+            this.btrn_aceptar.UseTransparentBackground = true;
+            this.btrn_aceptar.Click += new System.EventHandler(this.btrn_aceptar_Click);
+            // 
+            // btn_cancelar
+            // 
+            this.btn_cancelar.BackColor = System.Drawing.Color.Transparent;
+            this.btn_cancelar.BorderColor = System.Drawing.Color.Silver;
+            this.btn_cancelar.BorderRadius = 20;
+            this.btn_cancelar.BorderThickness = 1;
+            this.btn_cancelar.DisabledState.BorderColor = System.Drawing.Color.DarkGray;
+            this.btn_cancelar.DisabledState.CustomBorderColor = System.Drawing.Color.DarkGray;
+            this.btn_cancelar.DisabledState.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(169)))), ((int)(((byte)(169)))), ((int)(((byte)(169)))));
+            this.btn_cancelar.DisabledState.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(141)))), ((int)(((byte)(141)))), ((int)(((byte)(141)))));
+            this.btn_cancelar.FillColor = System.Drawing.SystemColors.ButtonFace;
+            this.btn_cancelar.Font = new System.Drawing.Font("Segoe UI", 14F);
+            this.btn_cancelar.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(78)))), ((int)(((byte)(151)))), ((int)(((byte)(191)))));
+            this.btn_cancelar.ImageSize = new System.Drawing.Size(25, 25);
+            this.btn_cancelar.Location = new System.Drawing.Point(47, 314);
+            this.btn_cancelar.Name = "btn_cancelar";
+            this.btn_cancelar.Padding = new System.Windows.Forms.Padding(10, 0, 0, 0);
+            this.btn_cancelar.Size = new System.Drawing.Size(139, 41);
+            this.btn_cancelar.TabIndex = 804;
+            this.btn_cancelar.Text = "Cancelar";
+            this.btn_cancelar.UseTransparentBackground = true;
+            this.btn_cancelar.Click += new System.EventHandler(this.btn_cancelar_Click);
+            // 
+            // dtp_mes
+            // 
+            this.dtp_mes.BackColor = System.Drawing.Color.White;
+            this.dtp_mes.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(213)))), ((int)(((byte)(218)))), ((int)(((byte)(223)))));
+            this.dtp_mes.BorderRadius = 5;
+            this.dtp_mes.BorderThickness = 1;
+            this.dtp_mes.Checked = true;
+            this.dtp_mes.CustomFormat = "MM/yyyy";
+            this.dtp_mes.FillColor = System.Drawing.Color.White;
+            this.dtp_mes.Font = new System.Drawing.Font("Segoe UI", 15F);
+            this.dtp_mes.ForeColor = System.Drawing.Color.DimGray;
+            this.dtp_mes.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
+            this.dtp_mes.HoverState.FillColor = System.Drawing.Color.White;
+            this.dtp_mes.Location = new System.Drawing.Point(80, 146);
+            this.dtp_mes.MaxDate = new System.DateTime(9998, 12, 31, 0, 0, 0, 0);
+            this.dtp_mes.MinDate = new System.DateTime(1753, 1, 1, 0, 0, 0, 0);
+            this.dtp_mes.Name = "dtp_mes";
+            this.dtp_mes.Size = new System.Drawing.Size(240, 36);
+            this.dtp_mes.TabIndex = 803;
+            this.dtp_mes.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            this.dtp_mes.Value = new System.DateTime(2026, 1, 31, 0, 0, 0, 0);
+            // 
+            // label20
+            // 
+            this.label20.AutoSize = true;
+            this.label20.Font = new System.Drawing.Font("Segoe UI", 11.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label20.ForeColor = System.Drawing.Color.DimGray;
+            this.label20.Location = new System.Drawing.Point(76, 121);
+            this.label20.Name = "label20";
+            this.label20.Size = new System.Drawing.Size(101, 20);
+            this.label20.TabIndex = 807;
+            this.label20.Text = "Elegir un Mes:";
+            // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.Font = new System.Drawing.Font("Segoe UI", 11.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label2.ForeColor = System.Drawing.Color.DimGray;
+            this.label2.Location = new System.Drawing.Point(76, 207);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(202, 20);
+            this.label2.TabIndex = 808;
+            this.label2.Text = "Elige un Tipo de Documento:";
+            // 
+            // cbo_tipoDoC
+            // 
+            this.cbo_tipoDoC.BackColor = System.Drawing.Color.Transparent;
+            this.cbo_tipoDoC.BorderColor = System.Drawing.Color.DimGray;
+            this.cbo_tipoDoC.BorderRadius = 6;
+            this.cbo_tipoDoC.DrawMode = System.Windows.Forms.DrawMode.OwnerDrawFixed;
+            this.cbo_tipoDoC.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cbo_tipoDoC.FocusedColor = System.Drawing.Color.FromArgb(((int)(((byte)(94)))), ((int)(((byte)(148)))), ((int)(((byte)(255)))));
+            this.cbo_tipoDoC.FocusedState.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(94)))), ((int)(((byte)(148)))), ((int)(((byte)(255)))));
+            this.cbo_tipoDoC.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this.cbo_tipoDoC.ForeColor = System.Drawing.Color.DimGray;
+            this.cbo_tipoDoC.ItemHeight = 30;
+            this.cbo_tipoDoC.Location = new System.Drawing.Point(79, 232);
+            this.cbo_tipoDoC.MaxDropDownItems = 2;
+            this.cbo_tipoDoC.Name = "cbo_tipoDoC";
+            this.cbo_tipoDoC.Size = new System.Drawing.Size(240, 36);
+            this.cbo_tipoDoC.TabIndex = 809;
+            // 
+            // kryptonBorderEdge1
+            // 
+            this.kryptonBorderEdge1.AutoSize = false;
+            this.kryptonBorderEdge1.Location = new System.Drawing.Point(39, 287);
+            this.kryptonBorderEdge1.Name = "kryptonBorderEdge1";
+            this.kryptonBorderEdge1.Size = new System.Drawing.Size(312, 10);
+            this.kryptonBorderEdge1.StateCommon.Image = ((System.Drawing.Image)(resources.GetObject("kryptonBorderEdge1.StateCommon.Image")));
+            this.kryptonBorderEdge1.StateCommon.ImageStyle = Krypton.Toolkit.PaletteImageStyle.Stretch;
+            this.kryptonBorderEdge1.Text = "kryptonBorderEdge1";
+            // 
+            // frm_Mes_Doc
+            // 
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.BackColor = System.Drawing.Color.White;
+            this.ClientSize = new System.Drawing.Size(414, 384);
+            this.Controls.Add(this.kryptonBorderEdge1);
+            this.Controls.Add(this.cbo_tipoDoC);
+            this.Controls.Add(this.label2);
+            this.Controls.Add(this.label20);
+            this.Controls.Add(this.pnl_titulo);
+            this.Controls.Add(this.btrn_aceptar);
+            this.Controls.Add(this.btn_cancelar);
+            this.Controls.Add(this.dtp_mes);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
+            this.Name = "frm_Mes_Doc";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+            this.Text = "frm_Mes_Doc";
+            this.Load += new System.EventHandler(this.frm_Mes_Doc_Load);
+            this.pnl_titulo.ResumeLayout(false);
+            this.pnl_titulo.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
+            this.ResumeLayout(false);
+            this.PerformLayout();
+
+        }
+
+        #endregion
+
+        private System.Windows.Forms.Panel pnl_titulo;
+        private Bunifu.Framework.UI.BunifuElipse bunifuElipse1;
+        private Guna.UI2.WinForms.Guna2Button btrn_aceptar;
+        private Guna.UI2.WinForms.Guna2Button btn_cancelar;
+        internal Guna.UI2.WinForms.Guna2DateTimePicker dtp_mes;
+        private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.Label label20;
+        private System.Windows.Forms.PictureBox pictureBox1;
+        private System.Windows.Forms.Label label1;
+        internal Guna.UI2.WinForms.Guna2ComboBox cbo_tipoDoC;
+        private Krypton.Toolkit.KryptonBorderEdge kryptonBorderEdge1;
+    }
+}
