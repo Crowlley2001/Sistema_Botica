@@ -15,74 +15,103 @@ namespace CapaDatos
         public static bool saved = false;
         public void CD_Registrar_Usuario(Usuarios objProd)
         {
-            SqlConnection cn = new SqlConnection();
-
             try
             {
-                cn.ConnectionString = conectar();
-                SqlCommand cmd = new SqlCommand("sp_registrar_Usuario", cn);
-                cmd.CommandTimeout = 20;
-                cmd.CommandType = System.Data.CommandType.StoredProcedure;
-                cmd.Parameters.AddWithValue("@idusu", objProd.Idusu);
-                cmd.Parameters.AddWithValue("@nombres", objProd.Nombres);
-                cmd.Parameters.AddWithValue("@apellidos", objProd.Apellidos);
-                cmd.Parameters.AddWithValue("@usu", objProd.Usu);
-                cmd.Parameters.AddWithValue("@clave", objProd.Clave);
-                cmd.Parameters.AddWithValue("@foto", objProd.Foto);
-                cmd.Parameters.AddWithValue("@fechaNaci", objProd.FechaNaci);
-                cmd.Parameters.AddWithValue("@idrol", objProd.Idrol);
-                cmd.Parameters.AddWithValue("@correo", objProd.Correo);
-                cn.Open();
-                cmd.ExecuteNonQuery();
-                cn.Close();
-                //MessageBox.Show("El Producto se ha Registrado correctamente", "Registro de producto", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                byte[] hash;
+                byte[] salt;
+                int iteraciones;
+                PasswordHasher.Crear(
+                    objProd.Clave, out hash, out salt, out iteraciones);
+
+                using (SqlConnection cn = new SqlConnection(conectar()))
+                using (SqlCommand cmd = new SqlCommand(@"
+                    INSERT INTO dbo.Usuarios
+                    (
+                        Id_Usu, Nombres, Apellidos, Usuario, Contraseña,
+                        FotoUsu, Fecha_Ncmiento, Id_Rol, Correo, Estado_Usu,
+                        PasswordHash, PasswordSalt, PasswordIterations
+                    )
+                    VALUES
+                    (
+                        @idusu, @nombres, @apellidos, @usu, 'PROTEGIDA',
+                        @foto, @fechaNaci, @idrol, @correo, 'Activo',
+                        @hash, @salt, @iteraciones
+                    );", cn))
+                {
+                    AgregarParametrosUsuario(cmd, objProd);
+                    cmd.Parameters.Add("@hash", SqlDbType.VarBinary, 32).Value = hash;
+                    cmd.Parameters.Add("@salt", SqlDbType.VarBinary, 32).Value = salt;
+                    cmd.Parameters.Add("@iteraciones", SqlDbType.Int).Value = iteraciones;
+                    cn.Open();
+                    cmd.ExecuteNonQuery();
+                }
                 saved = true;
             }
             catch (Exception ex)
             {
                 saved = false;
-                if (cn.State == System.Data.ConnectionState.Open)
-                {
-                    cn.Close();
-                }
-                MessageBox.Show("Error: " + ex.Message, "Registro de producto", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                MessageBox.Show(
+                    "Error: " + ex.Message,
+                    "Registro de usuario",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Exclamation);
             }
         }
 
 
         public void CD_Modificar_Usaurio(Usuarios objProd)
         {
-            SqlConnection cn = new SqlConnection();
-
             try
             {
-                cn.ConnectionString = conectar();
-                SqlCommand cmd = new SqlCommand("sp_editar_Usuario", cn);
-                cmd.CommandTimeout = 20;
-                cmd.CommandType = System.Data.CommandType.StoredProcedure;
-                cmd.Parameters.AddWithValue("@idusu", objProd.Idusu);
-                cmd.Parameters.AddWithValue("@nombres", objProd.Nombres);
-                cmd.Parameters.AddWithValue("@apellidos", objProd.Apellidos);
-                cmd.Parameters.AddWithValue("@usu", objProd.Usu);
-                cmd.Parameters.AddWithValue("@clave", objProd.Clave);
-                cmd.Parameters.AddWithValue("@foto", objProd.Foto);
-                cmd.Parameters.AddWithValue("@fechaNaci", objProd.FechaNaci);
-                cmd.Parameters.AddWithValue("@idrol", objProd.Idrol);
-                cmd.Parameters.AddWithValue("@correo", objProd.Correo);
-                cn.Open();
-                cmd.ExecuteNonQuery();
-                cn.Close();
-                //MessageBox.Show("El Producto se ha Registrado correctamente", "Registro de producto", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                bool cambiarClave = !String.IsNullOrWhiteSpace(objProd.Clave);
+                byte[] hash = null;
+                byte[] salt = null;
+                int iteraciones = 0;
+                if (cambiarClave)
+                    PasswordHasher.Crear(
+                        objProd.Clave, out hash, out salt, out iteraciones);
+
+                string sql = @"
+                    UPDATE dbo.Usuarios
+                    SET Nombres = @nombres,
+                        Apellidos = @apellidos,
+                        Usuario = @usu,
+                        FotoUsu = @foto,
+                        Fecha_Ncmiento = @fechaNaci,
+                        Id_Rol = @idrol,
+                        Correo = @correo" +
+                    (cambiarClave ? @",
+                        Contraseña = 'PROTEGIDA',
+                        PasswordHash = @hash,
+                        PasswordSalt = @salt,
+                        PasswordIterations = @iteraciones" : String.Empty) + @"
+                    WHERE Id_Usu = @idusu;";
+
+                using (SqlConnection cn = new SqlConnection(conectar()))
+                using (SqlCommand cmd = new SqlCommand(sql, cn))
+                {
+                    AgregarParametrosUsuario(cmd, objProd);
+                    if (cambiarClave)
+                    {
+                        cmd.Parameters.Add("@hash", SqlDbType.VarBinary, 32).Value = hash;
+                        cmd.Parameters.Add("@salt", SqlDbType.VarBinary, 32).Value = salt;
+                        cmd.Parameters.Add("@iteraciones", SqlDbType.Int).Value = iteraciones;
+                    }
+                    cn.Open();
+                    if (cmd.ExecuteNonQuery() != 1)
+                        throw new InvalidOperationException(
+                            "No se encontró el usuario que se desea modificar.");
+                }
                 saved = true;
             }
             catch (Exception ex)
             {
                 saved = false;
-                if (cn.State == System.Data.ConnectionState.Open)
-                {
-                    cn.Close();
-                }
-                MessageBox.Show("Error: " + ex.Message, "Registro de producto", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                MessageBox.Show(
+                    "Error: " + ex.Message,
+                    "Modificar usuario",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Exclamation);
             }
         }
 
@@ -91,40 +120,105 @@ namespace CapaDatos
         //------------------------ Verificar Acceso ---------------------------//
         public bool CD_Verificar_Acceso(string xusu, string xpass)
         {
-            bool rspta = false;
-            Int32 nro = 0;
-            SqlConnection cn = new SqlConnection();
             try
             {
-                SqlCommand cmd = new SqlCommand();
-                cn.ConnectionString = conectar();
-                cmd.CommandText = "Sp_Login";
-                cmd.Connection = cn;
-                cmd.CommandType = System.Data.CommandType.StoredProcedure;
-                cmd.Parameters.AddWithValue("@Usuario", xusu);
-                cmd.Parameters.AddWithValue("@Contraseña", xpass);
-                cn.Open();
-                nro = Convert.ToInt32(cmd.ExecuteScalar());
-                if (nro > 0)
+                using (SqlConnection cn = new SqlConnection(conectar()))
+                using (SqlCommand cmd = new SqlCommand(@"
+                    SELECT TOP (1)
+                        Id_Usu, Contraseña, PasswordHash,
+                        PasswordSalt, PasswordIterations
+                    FROM dbo.Usuarios
+                    WHERE Usuario = @usuario
+                      AND Estado_Usu = 'Activo';", cn))
                 {
-                    rspta = true;
+                    cmd.Parameters.Add("@usuario", SqlDbType.VarChar, 8).Value = xusu;
+                    cn.Open();
+                    using (SqlDataReader lector = cmd.ExecuteReader())
+                    {
+                        if (!lector.Read())
+                            return false;
+
+                        int idUsuario = lector.GetInt32(0);
+                        string claveAnterior =
+                            lector.IsDBNull(1) ? String.Empty : lector.GetString(1);
+                        byte[] hash = lector.IsDBNull(2)
+                            ? null : (byte[])lector[2];
+                        byte[] salt = lector.IsDBNull(3)
+                            ? null : (byte[])lector[3];
+                        int iteraciones = lector.IsDBNull(4)
+                            ? 0 : lector.GetInt32(4);
+
+                        if (hash != null)
+                            return PasswordHasher.Verificar(
+                                xpass, hash, salt, iteraciones);
+
+                        if (!String.Equals(
+                            claveAnterior, xpass, StringComparison.Ordinal))
+                            return false;
+
+                        lector.Close();
+                        MigrarClaveAnterior(cn, idUsuario, xpass);
+                        return true;
+                    }
                 }
-                else
-                {
-                    rspta = false;
-                }
-                cn.Close();
-                cmd.Dispose();
             }
             catch (Exception ex) 
             {
-                if (cn.State == System.Data.ConnectionState.Open)
-                {
-                    cn.Close();
-                }
-                MessageBox.Show("Error al guardar:" + ex.Message, "Login", MessageBoxButtons.OK, MessageBoxIcon.Error);  
+                MessageBox.Show(
+                    "No se pudo validar el acceso: " + ex.Message,
+                    "Login",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                return false;
             }
-            return rspta;
+        }
+
+        private static void MigrarClaveAnterior(
+            SqlConnection cn,
+            int idUsuario,
+            string password)
+        {
+            byte[] hash;
+            byte[] salt;
+            int iteraciones;
+            PasswordHasher.Crear(
+                password, out hash, out salt, out iteraciones);
+
+            using (SqlCommand cmd = new SqlCommand(@"
+                UPDATE dbo.Usuarios
+                SET Contraseña = 'PROTEGIDA',
+                    PasswordHash = @hash,
+                    PasswordSalt = @salt,
+                    PasswordIterations = @iteraciones
+                WHERE Id_Usu = @id;", cn))
+            {
+                cmd.Parameters.Add("@hash", SqlDbType.VarBinary, 32).Value = hash;
+                cmd.Parameters.Add("@salt", SqlDbType.VarBinary, 32).Value = salt;
+                cmd.Parameters.Add("@iteraciones", SqlDbType.Int).Value = iteraciones;
+                cmd.Parameters.Add("@id", SqlDbType.Int).Value = idUsuario;
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        private static void AgregarParametrosUsuario(
+            SqlCommand cmd,
+            Usuarios usuario)
+        {
+            cmd.Parameters.Add("@idusu", SqlDbType.Int).Value = usuario.Idusu;
+            cmd.Parameters.Add("@nombres", SqlDbType.VarChar, 50).Value =
+                usuario.Nombres.Trim();
+            cmd.Parameters.Add("@apellidos", SqlDbType.VarChar, 50).Value =
+                usuario.Apellidos.Trim();
+            cmd.Parameters.Add("@usu", SqlDbType.VarChar, 8).Value =
+                usuario.Usu.Trim();
+            cmd.Parameters.Add("@foto", SqlDbType.VarChar, 200).Value =
+                (object)usuario.Foto ?? DBNull.Value;
+            cmd.Parameters.Add("@fechaNaci", SqlDbType.Date).Value =
+                Convert.ToDateTime(usuario.FechaNaci);
+            cmd.Parameters.Add("@idrol", SqlDbType.Int).Value =
+                Convert.ToInt32(usuario.Idrol);
+            cmd.Parameters.Add("@correo", SqlDbType.VarChar, 150).Value =
+                (object)usuario.Correo ?? DBNull.Value;
         }
 
 
@@ -168,7 +262,14 @@ namespace CapaDatos
                 DataTable dt = new DataTable();
                 da.Fill(dt);
                 da = null;
-                return dt;
+                if (!dt.Columns.Contains("Estado_Usu"))
+                    return dt;
+
+                DataView activos = new DataView(dt)
+                {
+                    RowFilter = "Estado_Usu = 'Activo'"
+                };
+                return activos.ToTable();
             }
             catch (Exception ex)
             {
@@ -180,6 +281,17 @@ namespace CapaDatos
                 return null;
             }
 
+        }
+
+        public int CD_ObtenerSiguienteIdUsuario()
+        {
+            using (SqlConnection cn = new SqlConnection(conectar()))
+            using (SqlCommand cmd = new SqlCommand(
+                "SELECT ISNULL(MAX(Id_Usu), 0) + 1 FROM dbo.Usuarios;", cn))
+            {
+                cn.Open();
+                return Convert.ToInt32(cmd.ExecuteScalar());
+            }
         }
 
 

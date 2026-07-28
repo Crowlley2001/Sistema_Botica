@@ -37,6 +37,16 @@ namespace CapaDatos
                 cmd.Parameters.AddWithValue("@id_Usu", objDoc.Id_Usu);
                 cmd.Parameters.AddWithValue("@TotalGanancia", objDoc.TotalGanancia);
                 cmd.Parameters.AddWithValue("@TotalDscuento", objDoc.TotalDscuento);
+                cmd.Parameters.Add("@CodigoMoneda", SqlDbType.Char, 3).Value = objDoc.CodigoMoneda;
+                cmd.Parameters.Add("@TipoCambio", SqlDbType.Decimal).Value = objDoc.TipoCambio;
+                cmd.Parameters["@TipoCambio"].Precision = 18;
+                cmd.Parameters["@TipoCambio"].Scale = 6;
+                cmd.Parameters.Add("@ImporteMoneda", SqlDbType.Decimal).Value = objDoc.ImporteMoneda;
+                cmd.Parameters["@ImporteMoneda"].Precision = 18;
+                cmd.Parameters["@ImporteMoneda"].Scale = 2;
+                cmd.Parameters.Add("@ImporteSoles", SqlDbType.Decimal).Value = objDoc.ImporteSoles;
+                cmd.Parameters["@ImporteSoles"].Precision = 18;
+                cmd.Parameters["@ImporteSoles"].Scale = 2;
 
                 cn.Open();
                 cmd.ExecuteNonQuery();
@@ -133,6 +143,24 @@ namespace CapaDatos
                 if (cn.State == ConnectionState.Open) cn.Close();
                 MessageBox.Show("Error al mostrar datos: " + ex.Message);
                 return null;
+            }
+        }
+
+        public DataTable CD_ObtenerMonedaDocumento(string idDocumento)
+        {
+            using (SqlConnection cn = new SqlConnection(conectar()))
+            using (SqlCommand cmd = new SqlCommand(
+                @"SELECT CodigoMoneda, TipoCambio, ImporteMoneda, ImporteSoles
+                  FROM dbo.Documento
+                  WHERE LTRIM(RTRIM(id_Doc)) = LTRIM(RTRIM(@IdDocumento));", cn))
+            {
+                cmd.Parameters.Add("@IdDocumento", SqlDbType.Char, 11).Value =
+                    idDocumento == null ? string.Empty : idDocumento.Trim();
+
+                DataTable resultado = new DataTable();
+                using (SqlDataAdapter adaptador = new SqlDataAdapter(cmd))
+                    adaptador.Fill(resultado);
+                return resultado;
             }
         }
 

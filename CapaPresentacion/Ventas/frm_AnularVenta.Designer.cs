@@ -1106,7 +1106,6 @@
         internal System.Windows.Forms.Label label9;
         internal System.Windows.Forms.Label label4;
         private System.Windows.Forms.Label lbl_idcaja;
-        private System.Windows.Forms.Label x;
         private System.Windows.Forms.RadioButton rb_sindevolverStock;
         private System.Windows.Forms.Label label10;
         private System.Windows.Forms.Label label11;

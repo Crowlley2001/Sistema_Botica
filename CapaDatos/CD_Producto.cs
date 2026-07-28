@@ -9,6 +9,38 @@ namespace CapaDatos
     public class CD_Producto : Conexion
     {
         public static bool prod_saved = false;
+
+        public string CD_ObtenerSiguienteIdProducto()
+        {
+            using (SqlConnection cn = new SqlConnection(conectar()))
+            using (SqlCommand cmd = new SqlCommand(@"
+                SELECT 'PROD-' + RIGHT(
+                    '000000' + CONVERT(VARCHAR(6),
+                        ISNULL(MAX(TRY_CONVERT(INT,
+                            CASE
+                                WHEN Id_Pro LIKE 'PROD-%'
+                                THEN SUBSTRING(RTRIM(Id_Pro), 6, 20)
+                            END)), 0) + 1),
+                    6)
+                FROM dbo.Productos;", cn))
+            {
+                cn.Open();
+                return Convert.ToString(cmd.ExecuteScalar());
+            }
+        }
+
+        public bool CD_ExisteIdProducto(string idProducto)
+        {
+            using (SqlConnection cn = new SqlConnection(conectar()))
+            using (SqlCommand cmd = new SqlCommand(
+                "SELECT COUNT(1) FROM dbo.Productos WHERE RTRIM(Id_Pro)=@IdPro;", cn))
+            {
+                cmd.Parameters.Add("@IdPro", SqlDbType.VarChar, 20).Value =
+                    idProducto.Trim();
+                cn.Open();
+                return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+            }
+        }
         //----------------------------- METODO REGISTRAR PRODUCTO--------------------------------//
         public void CD_RegistrarProducto(Producto objProd)
         {
@@ -101,13 +133,28 @@ namespace CapaDatos
         //----------------------------- METODO BUSCAR PRODUCTO ID--------------------------------//
         public DataTable CD_Buscar_ProductoID(string idpro)
         {
+            string valor = (idpro ?? string.Empty).Trim();
             SqlConnection cn = new SqlConnection();
             try
             {
                 cn.ConnectionString = conectar();
-                SqlDataAdapter da = new SqlDataAdapter("Sp_Buscador_Produtos_porValor", cn);
-                da.SelectCommand.CommandType = CommandType.StoredProcedure;
-                da.SelectCommand.Parameters.AddWithValue("@valor", idpro);
+                const string consulta = @"
+SELECT *
+FROM v_Producto_Categoria
+WHERE Estado_Pro = 'Activo'
+  AND (
+        Id_Pro LIKE '%' + @valor + '%'
+        OR Descripcion_Larga LIKE '%' + @valor + '%'
+        OR Prin_Acti LIKE '%' + @valor + '%'
+        OR Laboratorio LIKE '%' + @valor + '%'
+        OR Categoria LIKE '%' + @valor + '%'
+      )
+ORDER BY
+    CASE WHEN Id_Pro = @valor THEN 0 ELSE 1 END,
+    Descripcion_Larga ASC;";
+                SqlDataAdapter da = new SqlDataAdapter(consulta, cn);
+                da.SelectCommand.CommandType = CommandType.Text;
+                da.SelectCommand.Parameters.Add("@valor", SqlDbType.VarChar, 150).Value = valor;
                 DataTable dt = new DataTable();
                 da.Fill(dt);
                 return dt;
@@ -119,7 +166,7 @@ namespace CapaDatos
                     cn.Close();
                 }
                 MessageBox.Show("Error al mostrar datos: " + ex.Message, "Registro de Producto", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
-                return null;
+                return new DataTable();
             }
         }
         //----------------------------- METODO DARBAJA PRODUCTO --------------------------------//

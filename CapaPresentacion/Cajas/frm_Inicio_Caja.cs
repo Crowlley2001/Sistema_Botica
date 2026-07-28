@@ -71,7 +71,8 @@ namespace CapaPresentacion.Cajas
             }
             catch (Exception ex)
             {
-                ver.lbl_Nomalgo.Text = "¡Error al iniciar caja!";
+                ver.lbl_Nomalgo.Text =
+                    "¡Error al iniciar caja!\n" + ex.Message;
                 ver.ShowDialog(this);
             }
         }

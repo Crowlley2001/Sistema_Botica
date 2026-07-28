@@ -19,6 +19,8 @@ namespace CapaPresentacion.Reportes
         public frm_Editar_DatosLocal()
         {
             InitializeComponent();
+            txt_claveSOL.UseSystemPasswordChar = true;
+            txt_certificado.UseSystemPasswordChar = true;
         }
 
         private void frm_Editar_DatosLocal_Load(object sender, EventArgs e)

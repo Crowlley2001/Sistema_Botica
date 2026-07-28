@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -24,9 +25,14 @@ namespace CapaPresentacion.Producto
         {
             cbo_receta.SelectedIndex = 0;
             LLenarCombo_Categoria();
+            if (cbo_catg.Items.Count > 0)
+                cbo_catg.SelectedIndex = 0;
+            if (cbo_presentacion.Items.Count > 0)
+                cbo_presentacion.SelectedIndex = 0;
             // Estado inicial
             chk_bar.Checked = false;
             txt_idProd.Enabled = false;
+            GenerarIdAutomatico();
 
             chk_fechvence.Checked = false;
             dtp_fechaVence.Enabled = false;
@@ -47,7 +53,7 @@ namespace CapaPresentacion.Producto
                 cbo.DataSource = data;
                 cbo.DisplayMember = "Categoria";
                 cbo.ValueMember = "Id_Cat";
-                cbo.SelectedIndex = -1;
+                cbo.SelectedIndex = 0;
 
             }
         }
@@ -78,14 +84,39 @@ namespace CapaPresentacion.Producto
         {
             CN_Producto obj = new CN_Producto();
             CapaEntidad.Producto pro = new CapaEntidad.Producto();
+            string fotoCopiada = null;
             try
             {
+                if (!chk_bar.Checked)
+                {
+                    GenerarIdAutomatico();
+                }
+
+                if (obj.ExisteIdProducto(txt_idProd.Text))
+                {
+                    if (!chk_bar.Checked)
+                    {
+                        GenerarIdAutomatico();
+                    }
+                    else
+                    {
+                        MessageBox.Show(
+                            "El código ingresado ya pertenece a otro producto.",
+                            "Código duplicado",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning);
+                        txt_idProd.Focus();
+                        return;
+                    }
+                }
+
                 pro.Idprod = txt_idProd.Text;
                 pro.Descripcion = txt_nomprod.Text;
                 pro.PrecioCompra = Convert.ToDouble(txt_precompra.Text);
                 pro.StockActual = Convert.ToDouble(txt_stock.Text);
                 pro.IdCat = Convert.ToInt32(cbo_catg.SelectedValue);
-                pro.Foto = fotoruta;
+                fotoCopiada = GuardarFotoEnCarpetaProducto(pro.Idprod);
+                pro.Foto = string.IsNullOrWhiteSpace(fotoCopiada) ? "-" : fotoCopiada;
                 pro.Preventa = Convert.ToDouble(txt_preventa.Text);
                 pro.FormatoCompra = cbo_presentacion.Text;
                 pro.UtilidadUnit = Convert.ToDouble(txt_preventa.Text) - Convert.ToDouble(txt_precompra.Text);
@@ -111,30 +142,27 @@ namespace CapaPresentacion.Producto
                     {
                         MessageBox.Show("El producto se ha registrado correctamente", "Registro de Kardex", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
+                    Limpiar();
                 }
-                Limpiar();
+                else if (!string.IsNullOrWhiteSpace(fotoCopiada) &&
+                         File.Exists(fotoCopiada))
+                {
+                    File.Delete(fotoCopiada);
+                }
             }
             catch (Exception ex)
             {
+                if (!string.IsNullOrWhiteSpace(fotoCopiada) &&
+                    File.Exists(fotoCopiada))
+                {
+                    File.Delete(fotoCopiada);
+                }
                 MessageBox.Show("Error: " + ex.Message, "Registro de producto", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
             }
         }
         //---------------------------------- METODO VALIDAR CAMPOS ------------------------------------//
         private bool ValidarCampos()
         {
-            // VALIDAR CHECK DE ID PRODUCTO
-            if (!chk_bar.Checked)
-            {
-                MessageBox.Show(
-                    "Debe marcar el check para generar o ingresar el ID del producto",
-                    "Validación",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning
-                );
-                chk_bar.Focus();
-                return false;
-            }
-
             if (string.IsNullOrWhiteSpace(txt_idProd.Text))
             {
                 MessageBox.Show(
@@ -197,7 +225,7 @@ namespace CapaPresentacion.Producto
             try
             {
                 if (objkardex.Verificar_Kardex_Producto(idprod.Trim()) == true) return;
-                string idkardex = "01-" + txt_idProd.Text;
+                string idkardex = CN_TipoDoc.CN_Generar_NroCorrelativo(8);
 
                     // 2do paso: registrar el kardex
                 objkardex.RegistrarKardex(idkardex,txt_idProd.Text);
@@ -231,6 +259,10 @@ namespace CapaPresentacion.Producto
                     detkardex.Cant_diferencial = "_";
                     detkardex.ImporteDiferente = 0;
                     objkardex.Registrar_DetalleKardex(detkardex);
+                    if (CD_Kardex.det_saved)
+                    {
+                        CN_TipoDoc.CN_Actualizar_Correlativo(8);
+                    }
                 }
             }
             catch (Exception ex)
@@ -272,11 +304,13 @@ namespace CapaPresentacion.Producto
             if(chk_bar.Checked==true)
             {
                 txt_idProd.Enabled = true;
+                txt_idProd.Clear();
                 txt_idProd.Focus();
             }
             else
             {
                 txt_idProd.Enabled = false;
+                GenerarIdAutomatico();
             }
         }
         //-------------------------- METODO SELECCIONAR CHECK PARA LA FECHA ---------------------------//
@@ -308,9 +342,9 @@ namespace CapaPresentacion.Producto
             nud_max.Value = nud_max.Minimum;
 
             // ComboBox
-            cbo_catg.SelectedIndex = -1;
+            cbo_catg.SelectedIndex = cbo_catg.Items.Count > 0 ? 0 : -1;
             cbo_receta.SelectedIndex = 0;
-            cbo_presentacion.SelectedIndex = -1;
+            cbo_presentacion.SelectedIndex = cbo_presentacion.Items.Count > 0 ? 0 : -1;
 
             // CheckBox
             chk_bar.Checked = false;
@@ -324,6 +358,7 @@ namespace CapaPresentacion.Producto
             pic_prod.Image = Properties.Resources.Imagen7;
             pic_prod.SizeMode = PictureBoxSizeMode.Zoom;
             fotoruta = "";
+            GenerarIdAutomatico();
 
             // Foco inicial
             txt_nomprod.Focus();
@@ -399,6 +434,42 @@ namespace CapaPresentacion.Producto
         private void btn_minimizar_Click(object sender, EventArgs e)
         {
             this.WindowState = FormWindowState.Minimized;
+        }
+
+        private void GenerarIdAutomatico()
+        {
+            try
+            {
+                txt_idProd.Text = new CN_Producto().ObtenerSiguienteIdProducto();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "No se pudo generar el código automático: " + ex.Message,
+                    "Código de producto",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
+        }
+
+        private string GuardarFotoEnCarpetaProducto(string idProducto)
+        {
+            if (string.IsNullOrWhiteSpace(fotoruta) || !File.Exists(fotoruta))
+                return null;
+
+            string carpeta = Path.Combine(
+                Application.StartupPath, "ImagenesProductos");
+            Directory.CreateDirectory(carpeta);
+
+            string extension = Path.GetExtension(fotoruta);
+            if (string.IsNullOrWhiteSpace(extension))
+                extension = ".png";
+
+            string destino = Path.Combine(
+                carpeta,
+                idProducto.Trim().Replace(":", "_").Replace("/", "_") + extension);
+            File.Copy(fotoruta, destino, true);
+            return destino;
         }
     }
 }

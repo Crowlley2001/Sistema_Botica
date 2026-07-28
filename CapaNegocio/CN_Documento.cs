@@ -46,6 +46,12 @@ namespace CapaNegocio
             return obj.CD_Listar_Documentos_Pordia(xdia);
         }
 
+        public DataTable CN_ObtenerMonedaDocumento(string idDocumento)
+        {
+            CD_Documento obj = new CD_Documento();
+            return obj.CD_ObtenerMonedaDocumento(idDocumento);
+        }
+
         //-------------------------- METODO LISTAR TODOS LOS DOCUMENTOS ID ------------------------//
         public DataTable CN_Buscar_DocumentoId(string idtemp)
         {

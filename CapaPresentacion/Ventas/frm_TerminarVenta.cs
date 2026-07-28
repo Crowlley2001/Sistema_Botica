@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -23,15 +24,28 @@ namespace CapaPresentacion.Ventas
 
         public double TotalVenta = 0;
         public string TipoPago = "";
+        public string NroOperacion = "";
+        public string CodigoMoneda = "PEN";
+        public decimal TipoCambio = 1m;
         private void frm_TerminarVenta_Load(object sender, EventArgs e)
         {
-            if (TipoPago == "Efectivo")
+            label3.Text = CodigoMoneda == "USD"
+                ? "Total venta US$"
+                : "Total venta S/.";
+
+            if (PasarelaPagoManual.EsEfectivo(TipoPago))
             {
                 pnl_tarjeta.Visible = false;
             }
             else
             {
                 pnl_tarjeta.Visible = true;
+                label2.Text = TipoPago;
+                lbl_msm.Text = "Operación: " + NroOperacion;
+                decimal total;
+                if (TryLeerImporte(txt_Total_acobrar.Text, out total))
+                    txt_Acuenta.Text = total.ToString("0.00");
+                txt_Acuenta.ReadOnly = true;
             }
             this.ActiveControl = txt_Acuenta;
             txt_Acuenta.SelectionStart = txt_Acuenta.Text.Length;
@@ -49,29 +63,17 @@ namespace CapaPresentacion.Ventas
         //---------------------------- METODO PARA CALCULAR VUELTO EN EL TEXTBOX ----------------------------//
         private void txt_Acuenta_TextChanged(object sender, EventArgs e)
         {
-           
-            txt_Acuenta.Text = txt_Acuenta.Text.Replace(",", ".");
-            txt_Acuenta.SelectionStart = txt_Acuenta.Text.Length;
-
-            try
+            decimal pagaCon;
+            decimal total;
+            if (TryLeerImporte(txt_Acuenta.Text, out pagaCon) &&
+                TryLeerImporte(txt_Total_acobrar.Text, out total))
             {
-                if (string.IsNullOrWhiteSpace(txt_Acuenta.Text))
-                {
-                    txt_Acuenta.Focus();
-                    return;
-                }
-
-                double pagaCon = Convert.ToDouble(txt_Acuenta.Text);
-                double total = Convert.ToDouble(txt_Total_acobrar.Text);
-                double vuelto = pagaCon - total;
-
-             
-                txt_vuelto.Text = vuelto.ToString("###0.00");
+                decimal vuelto = pagaCon - total;
+                txt_vuelto.Text = vuelto.ToString("0.00");
             }
-            catch (Exception ex)
+            else
             {
                 txt_vuelto.Text = "0.00";
-                string sms = ex.Message; 
             }
         }
 
@@ -101,8 +103,65 @@ namespace CapaPresentacion.Ventas
         //----------------------------- BOTON PARA IMPRIMIR TICKET DE VENTA ---------------------------------//
         private void btrn_imprimir_Click(object sender, EventArgs e)
         {
+            decimal total;
+            decimal pago;
+            if (!TryLeerImporte(txt_Total_acobrar.Text, out total) ||
+                !TryLeerImporte(txt_Acuenta.Text, out pago))
+            {
+                MessageBox.Show(
+                    "Ingrese un importe de pago válido.",
+                    "Validación de cobro",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                txt_Acuenta.Focus();
+                return;
+            }
+
+            if (PasarelaPagoManual.EsEfectivo(TipoPago) &&
+                pago < total)
+            {
+                MessageBox.Show(
+                    "El importe recibido no puede ser menor que el total de la venta.",
+                    "Validación de cobro",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                txt_Acuenta.Focus();
+                return;
+            }
+
+            if (!PasarelaPagoManual.EsEfectivo(TipoPago))
+            {
+                DialogResult confirmacion = MessageBox.Show(
+                    "Verifique los datos antes de registrar la venta:\n\n" +
+                    "Método: " + TipoPago + "\n" +
+                    "Operación: " + NroOperacion + "\n" +
+                    "Importe: " + CodigoMoneda + " " + total.ToString("0.00") +
+                    "\n\n¿El pago figura como aprobado en el POS o aplicación?",
+                    "Confirmar pago electrónico",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question,
+                    MessageBoxDefaultButton.Button2);
+                if (confirmacion != DialogResult.Yes)
+                    return;
+            }
+
             this.Tag = "A";
             this.Close();
+        }
+
+        private static bool TryLeerImporte(string texto, out decimal importe)
+        {
+            string valor = (texto ?? string.Empty).Trim();
+            return decimal.TryParse(
+                       valor,
+                       NumberStyles.Number,
+                       CultureInfo.CurrentCulture,
+                       out importe) ||
+                   decimal.TryParse(
+                       valor.Replace(',', '.'),
+                       NumberStyles.Number,
+                       CultureInfo.InvariantCulture,
+                       out importe);
         }
 
         //------------------------------ BOTON PARA SALIR DEL FORMULARIO ------------------------------------//

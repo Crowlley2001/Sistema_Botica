@@ -22,11 +22,7 @@ namespace CapaPresentacion.Ventas
 
         private void tocar_timbreCaja()
         {
-            string ruta;
-            ruta = Application.StartupPath;
-            System.Media.SoundPlayer son;
-            son = new System.Media.SoundPlayer(ruta + @"\timbre1.wav");
-            son.Play();
+            AudioSistema.Reproducir("timbre1.wav");
         }
 
         private void frm_Msm_bueno_Load(object sender, EventArgs e)

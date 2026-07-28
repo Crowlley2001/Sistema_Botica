@@ -1,6 +1,7 @@
 ﻿using CapaDatos;
 using CapaEntidad;
 using CapaNegocio;
+using CapaPresentacion.Ventas;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -19,6 +20,12 @@ namespace CapaPresentacion.Usuario
         public frm_Editar_Cliente()
         {
             InitializeComponent();
+            txt_dni.MaxLength = 11;
+            txt_dni.ReadOnly = false;
+            txt_dni.Enabled = true;
+            txt_dni.PlaceholderText = "DNI (8) o RUC (11)";
+            txt_dni.KeyPress += txt_dni_KeyPress;
+            txt_dni.DoubleClick += delegate { txt_dni.SelectAll(); };
         }
         private void frm_Editar_Cliente_Load(object sender, EventArgs e)
         {
@@ -26,8 +33,6 @@ namespace CapaPresentacion.Usuario
             {
                 Cargar_Datos_Cliente();
             }
-            //         FECHA - ACTUAL         //
-            dtp_fechanaci.Value = DateTime.Now;
         }
         private void pnl_titu_MouseMove(object sender, MouseEventArgs e)
         {
@@ -64,6 +69,12 @@ namespace CapaPresentacion.Usuario
                 txt_direccion.Text = dt.Rows[0]["Direccion"].ToString();
                 txt_tel.Text = dt.Rows[0]["Telefono"].ToString();
                 txt_mail.Text = dt.Rows[0]["E_Mail"].ToString();
+                DateTime fecha;
+                if (DateTime.TryParse(
+                    Convert.ToString(dt.Rows[0]["Fcha_Ncmnto_Anivsrio"]), out fecha))
+                {
+                    dtp_fechanaci.Value = fecha;
+                }
             }
         }
 
@@ -74,6 +85,9 @@ namespace CapaPresentacion.Usuario
 
         private void Actualizar_Cliente()
         {
+            if (!ValidarCliente())
+                return;
+
             CN_Cliente obj = new CN_Cliente();
             Cliente cli = new Cliente();
 
@@ -85,15 +99,71 @@ namespace CapaPresentacion.Usuario
             cli.Telefono = txt_tel.Text;
             cli.FechaAniver = dtp_fechanaci.Value;
 
-            obj.Editar_Cliente(cli);
-
-            if (CD_Cliente.cli_saved == true)
+            try
             {
-                MessageBox.Show("Cliente actualizado correctamente");
+                obj.Editar_Cliente(cli);
 
-                this.Tag = "A";
-                this.Close();
+                if (CD_Cliente.cli_saved == true)
+                {
+                    Filtro filtro = new Filtro();
+                    frm_Msm_bueno ok = new frm_Msm_bueno();
+                    filtro.Show();
+                    ok.Lbl_msm1.Text = "El cliente fue actualizado correctamente.";
+                    ok.ShowDialog(this);
+                    filtro.Hide();
+
+                    this.Tag = "A";
+                    this.Close();
+                }
             }
+            catch (Exception ex)
+            {
+                MostrarAdvertencia("No se pudo actualizar el cliente: " + ex.Message);
+            }
+        }
+
+        private bool ValidarCliente()
+        {
+            if (txt_nombre.Text.Trim().Length < 2)
+            {
+                MostrarAdvertencia("Ingrese el nombre o razón social del cliente.");
+                txt_nombre.Focus();
+                return false;
+            }
+
+            string documento = new string(txt_dni.Text.Where(char.IsDigit).ToArray());
+            if (documento.Length != 8 && documento.Length != 11)
+            {
+                MostrarAdvertencia("Ingrese un DNI de 8 dígitos o un RUC de 11 dígitos.");
+                txt_dni.Focus();
+                return false;
+            }
+
+            if (documento.Length == 11 && !ValidadorDocumentoPeru.EsRucValido(documento))
+            {
+                MostrarAdvertencia("El RUC ingresado no es válido.");
+                txt_dni.Focus();
+                return false;
+            }
+
+            txt_dni.Text = documento;
+            return true;
+        }
+
+        private void txt_dni_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
+                e.Handled = true;
+        }
+
+        private void MostrarAdvertencia(string mensaje)
+        {
+            Filtro filtro = new Filtro();
+            frm_Advertencia advertencia = new frm_Advertencia();
+            filtro.Show();
+            advertencia.lbl_msm.Text = mensaje;
+            advertencia.ShowDialog(this);
+            filtro.Hide();
         }
         private void Limpiar_Cliente()
         {

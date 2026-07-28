@@ -68,7 +68,7 @@ namespace CapaPresentacion.Producto
                 txt_importe.Text = importe.ToString("###0.00");
 
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 txt_dife.Text = "0";
                 txt_importe.Text = "0";

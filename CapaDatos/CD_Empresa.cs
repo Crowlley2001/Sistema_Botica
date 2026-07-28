@@ -22,8 +22,11 @@ namespace CapaDatos
                         cmd.Parameters.AddWithValue("@Direccionran", direccion);
                         cmd.Parameters.AddWithValue("@correo", correo);
                         cmd.Parameters.AddWithValue("@usuariosol", usuariosol);
-                        cmd.Parameters.AddWithValue("@clavesol", clavesol);
-                        cmd.Parameters.AddWithValue("@clavecertificado", clavecertificado);
+                        cmd.Parameters.Add("@clavesol", SqlDbType.VarChar, 1000).Value =
+                            ProtectorSecretos.Proteger(clavesol);
+                        cmd.Parameters.Add(
+                            "@clavecertificado", SqlDbType.VarChar, 1000).Value =
+                            ProtectorSecretos.Proteger(clavecertificado);
                         cmd.Parameters.AddWithValue("@obs", obs); // Guarda la ruta local o del servidor
 
                         cn.Open();
@@ -50,6 +53,16 @@ namespace CapaDatos
                         da.Fill(dt);
                     }
                 }
+
+                if (dt.Rows.Count > 0)
+                {
+                    dt.Rows[0]["clavesol"] = ProtectorSecretos.Desproteger(
+                        Convert.ToString(dt.Rows[0]["clavesol"]));
+                    dt.Rows[0]["clavecertificado"] =
+                        ProtectorSecretos.Desproteger(
+                            Convert.ToString(dt.Rows[0]["clavecertificado"]));
+                }
+
                 return dt;
             }
             catch (Exception ex)
@@ -61,4 +74,3 @@ namespace CapaDatos
 }
 
 
-   

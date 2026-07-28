@@ -82,7 +82,6 @@ namespace CapaPresentacion.Ventas
             double xdscto = 0;
             double UtiliTnit = 0;
             double ImporteUtilidad = 0;
-            double totalDscto = 0;
             double GanaciaTotal = 0;
 
             try
@@ -106,7 +105,7 @@ namespace CapaPresentacion.Ventas
                     //Cacular PAGO TOTAL
                     totalventa = totalventa + Convert.ToDouble(lsv_Det.Items[i].SubItems[4].Text);
                     subtotal = totalventa / 1.18;
-                    igv = totalventa * 0.18;
+                    igv = totalventa - subtotal;
 
                     GanaciaTotal = GanaciaTotal + Convert.ToDouble(lsv_Det.Items[i].SubItems[6].Text);
                 }
@@ -212,41 +211,51 @@ namespace CapaPresentacion.Ventas
             if (cbo_tipodocumento.SelectedIndex == -1) { filtro.Show(); ver.lbl_msm.Text = "Por favor, seleciona el tipo de documento a emitir"; ver.ShowDialog(this); filtro.Hide(); cbo_tipodocumento.Focus(); return false; }
 
             if (cbo_tipodocumento.SelectedIndex == 0) { filtro.Show(); ver.lbl_msm.Text = "Por favor, no Selecciones Nota de Venta"; ver.ShowDialog(this); filtro.Hide(); cbo_tipodocumento.Focus(); return false; }
+
+            int tipoDocumento = Convert.ToInt32(
+                cbo_tipodocumento.SelectedValue);
+            string documentoCliente = new string(
+                txt_dni.Text.Where(Char.IsDigit).ToArray());
+
+            if (tipoDocumento == 1 && documentoCliente.Length != 11)
+            {
+                MessageBox.Show(
+                    "Para emitir una factura el cliente debe tener un RUC válido de 11 dígitos.",
+                    "Datos del cliente",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return false;
+            }
+
+            decimal total;
+            if (tipoDocumento == 2 &&
+                decimal.TryParse(txt_totalpagar.Text, out total) &&
+                total > 700m &&
+                documentoCliente.Length != 8 &&
+                documentoCliente.Length != 11)
+            {
+                MessageBox.Show(
+                    "Una boleta mayor a S/ 700 requiere DNI o RUC del cliente.",
+                    "Datos del cliente",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return false;
+            }
             return true;
 
         }
 
 
 
-        private void Guardar_Documento()
+        private string Guardar_Documento()
         {
-            CN_Documento obj = new CN_Documento();
-            Documento doc = new Documento();
-            try
-            {
-                txt_newnro_Doc.Text = CN_TipoDoc.CN_Generar_NroCorrelativo(Convert.ToInt32(cbo_tipodocumento.SelectedValue));
-                doc.Id_Doc = txt_newnro_Doc.Text;
-                doc.Id_Ped = txt_nroPedido.Text;
-                doc.Id_Tipo = Convert.ToInt32(cbo_tipodocumento.SelectedValue);
-                doc.Fecha_Emi = dtp_fechaemi.Value;
-                doc.ImporteDoc = Convert.ToDouble(txt_totalpagar.Text);
-                doc.TipoPago = cbo_tipopago.Text;
-                doc.Nro_Operation = "-";
-                doc.Id_Usu = Convert.ToInt32(Cls_ModalCategoria.IdUsu);
-                doc.TotalGanancia = 0;
-                doc.TotalDscuento = 0;
-
-                obj.RegistrarDocumento(doc);
-                if (CD_Documento.doc_saved == true)
-                {
-                    CN_TipoDoc.CN_Actualizar_Correlativo(Convert.ToInt32(cbo_tipodocumento.SelectedValue));
-                }
-            }
-            catch (Exception ex)
-            {
-                string msm = ex.Message;
-                MessageBox.Show("Error al guardar:" + ex.Message, "Advertencia", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
-            }
+            string nuevo = new CN_CanjeDocumento().Canjear(
+                txt_nroDoc.Text,
+                Convert.ToInt32(cbo_tipodocumento.SelectedValue),
+                dtp_fechaemi.Value,
+                Convert.ToInt32(Cls_ModalCategoria.IdUsu));
+            txt_newnro_Doc.Text = nuevo;
+            return nuevo;
         }
 
         private void btn_cerrar_Click(object sender, EventArgs e)
@@ -291,16 +300,14 @@ namespace CapaPresentacion.Ventas
             {
                 if (ValidarVenta())
                 {
-                    Guardar_Documento();
-                    if (CD_Documento.doc_saved == true)
-                    {
-                        fil.Show();
-                        ok.Lbl_msm1.Text = "¡El documento ha sido canjeado con éxito!";
-                        ok.ShowDialog(this);
-                        fil.Hide();
-                        this.Tag = "A";
-                        this.Close();
-                    }
+                    string documentoNuevo = Guardar_Documento();
+                    fil.Show();
+                    ok.Lbl_msm1.Text =
+                        "Documento canjeado correctamente: " + documentoNuevo;
+                    ok.ShowDialog(this);
+                    fil.Hide();
+                    Tag = "A";
+                    Close();
                 }
             }
             catch (Exception ex)

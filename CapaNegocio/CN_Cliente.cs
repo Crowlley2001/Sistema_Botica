@@ -41,5 +41,18 @@ namespace CapaNegocio
             CD_Cliente obj = new CD_Cliente();
             obj.CD_EditarCliente(cli);
         }
+
+        public void DarBajaCliente(string idCliente)
+        {
+            if (string.IsNullOrWhiteSpace(idCliente))
+                throw new ArgumentException("Debe seleccionar un cliente.");
+
+            if (idCliente.Trim().Equals("C01", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException(
+                    "El cliente predeterminado para venta al público no se puede desactivar.");
+
+            CD_Cliente obj = new CD_Cliente();
+            obj.CD_CambiarEstadoCliente(idCliente.Trim(), "Eliminado");
+        }
     }
 }

@@ -4325,7 +4325,6 @@
         private System.Windows.Forms.Label lblhora;
         internal System.Windows.Forms.Label Label3;
         internal System.Windows.Forms.Label Label2;
-        private System.Windows.Forms.TabPage tabAlmacen;
         private System.Windows.Forms.TabPage tabCajaCierre;
         private System.Windows.Forms.TabPage tabpage_movimiento;
         private Guna.UI2.WinForms.Guna2TabControl ElTab1;

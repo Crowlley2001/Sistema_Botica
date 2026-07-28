@@ -19,7 +19,7 @@ CREATE TABLE [dbo].[Caja](
 	[ImporteCaja] [real] NULL,
 	[Id_Usu] [int] NULL,
 	[TotalUti] [real] NULL,
-	[TipoPago] [varchar](13) NULL,
+	[TipoPago] [varchar](50) NULL,
 	[GeneradoPor] [varchar](15) NULL,
 	[EstadoCaja] [varchar](13) NULL,
 	[Total_Dscuentos] [real] not null,
@@ -399,7 +399,7 @@ CREATE TABLE [dbo].[Temporal](
 	[Tipocomprobante] [varchar](50) NULL,
 	[HashCpe] [varchar](60) NULL,
 	[MotivoEmi] [varchar](60) NULL,
-	[TipoPago] [varchar](20) NULL,
+	[TipoPago] [varchar](50) NULL,
 	[DireccionTienda] [varchar](220) NULL,
 	[NombreSucursal] [varchar](220) NULL,
 PRIMARY KEY CLUSTERED 

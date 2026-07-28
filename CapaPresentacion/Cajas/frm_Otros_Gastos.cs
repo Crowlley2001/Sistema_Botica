@@ -42,13 +42,23 @@ namespace CapaPresentacion.Cajas
 
             try
             {
+                int idUsuario = Cls_ModalCategoria.IdUsu;
+                if (idUsuario <= 0 ||
+                    !new CN_CierreCaja().CN_TieneCajaAbiertaUsuario(idUsuario))
+                {
+                    MostrarAdvertencia(
+                        "¡Caja requerida!\n\n" +
+                        "Abra su caja antes de registrar gastos del día.");
+                    return;
+                }
+
                 cja.Fecha_Caja = dtp_Salida.Value;
                 cja.Tipo_Caja = "Salida";
                 cja.Concepto = txt_detalle_Salida.Text;
                 cja.De_Para = txt_Recibi_Salida.Text;
                 cja.Nro_Doc = txt_Documento_Salida.Text;
                 cja.ImporteCaja = Convert.ToDouble(txt_Importe_Salida.Text);
-                cja.Id_Usu = Convert.ToInt32(Cls_ModalCategoria.IdUsu);
+                cja.Id_Usu = idUsuario;
                 cja.TotalUti = 0;
                 cja.TipoPago = cbo_Salida.Text;
                 cja.GeneradoPor = "Otros";
@@ -70,23 +80,35 @@ namespace CapaPresentacion.Cajas
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error al registrar el ingreso: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MostrarAdvertencia(
+                    "No se pudo registrar la salida.\n\n" + ex.Message);
             }
         }
 
+        private void MostrarAdvertencia(string mensaje)
+        {
+            using (Filtro fondoAviso = new Filtro())
+            using (frm_Advertencia aviso = new frm_Advertencia())
+            {
+                aviso.lbl_msm.Text = mensaje;
+                fondoAviso.Show();
+                aviso.ShowDialog(this);
+                fondoAviso.Hide();
+            }
+        }
        
 
         private void btn_registrar_Salida_Click(object sender, EventArgs e)
         {
             if (string.IsNullOrWhiteSpace(txt_detalle_Salida.Text))
             {
-                MessageBox.Show("Ingrese el detalle", "Aviso");
+                MostrarAdvertencia("Ingrese el concepto o detalle de la salida.");
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(txt_Importe_Salida.Text))
             {
-                MessageBox.Show("Ingrese el importe", "Aviso");
+                MostrarAdvertencia("Ingrese el importe de la salida.");
                 return;
             }
             Guardar_Salida();

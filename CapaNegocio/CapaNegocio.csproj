@@ -42,10 +42,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CN_Caja.cs" />
+    <Compile Include="CN_CanjeDocumento.cs" />
+    <Compile Include="CN_AnulacionVenta.cs" />
     <Compile Include="CN_Categoria.cs" />
     <Compile Include="CN_CierreCaja.cs" />
     <Compile Include="CN_Cliente.cs" />
     <Compile Include="CN_Compra.cs" />
+    <Compile Include="CN_CompraCompleta.cs" />
+    <Compile Include="CN_CpeElectronico.cs" />
     <Compile Include="CN_Documento.cs" />
     <Compile Include="CN_Empresa.cs" />
     <Compile Include="CN_Kardex.cs" />
@@ -58,6 +62,7 @@
     <Compile Include="CN_TipoCambio.cs" />
     <Compile Include="CN_TipoDoc.cs" />
     <Compile Include="CN_Usuario.cs" />
+    <Compile Include="CN_Venta.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

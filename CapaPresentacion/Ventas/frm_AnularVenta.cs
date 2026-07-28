@@ -90,7 +90,6 @@ namespace CapaPresentacion.Ventas
             double xdscto = 0;
             double UtiliTnit = 0;
             double ImporteUtilidad = 0;
-            double totalDscto = 0;
             double GanaciaTotal = 0;
 
             try
@@ -114,7 +113,7 @@ namespace CapaPresentacion.Ventas
                     //Cacular PAGO TOTAL
                     totalventa = totalventa + Convert.ToDouble(lsv_Det.Items[i].SubItems[4].Text);
                     subtotal = totalventa / 1.18;
-                    igv = totalventa * 0.18;
+                    igv = totalventa - subtotal;
 
                     GanaciaTotal = GanaciaTotal + Convert.ToDouble(lsv_Det.Items[i].SubItems[6].Text);
                 }
@@ -220,39 +219,45 @@ namespace CapaPresentacion.Ventas
         {
             Filtro fil = new Filtro();
             frm_Msm_bueno ok = new frm_Msm_bueno();
-            CN_Documento obj = new CN_Documento();
-            CN_Caja objCaja = new CN_Caja();
 
             try
             {
+                if (Cls_ModalCategoria.Idrol != "1")
+                {
+                    MessageBox.Show(
+                        "Solo un administrador puede anular comprobantes.",
+                        "Acceso restringido",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    return;
+                }
+
                 if(ValidarVenta())
                 {
-                    obj.CN_AnulaDocumento(txt_nroDoc.Text, "Anulado");
-                    if(CD_Documento.doc_saved == true)
-                    {
-                        objCaja.CN_Anular_Movimiento_Caja(txt_nroDoc.Text, "Anulado");
-                        if(CD_Caja.cajaSaved == true)
-                        {
-                            if (lbl_opt.Text.Trim() == "Devol")
-                            {
-                                Registrar_MovimientoKardex();
-                            }
+                    bool devolverStock = lbl_opt.Text.Trim() == "Devol";
+                    new CN_AnulacionVenta().Anular(
+                        txt_nroDoc.Text,
+                        devolverStock,
+                        Convert.ToInt32(Cls_ModalCategoria.IdUsu));
 
-                            fil.Show();
-                            ok.Lbl_msm1.Text = "El Documento fue Anulado Exitosamente";
-                            ok.ShowDialog(this);
-                            fil.Hide();
+                    fil.Show();
+                    ok.Lbl_msm1.Text = devolverStock
+                        ? "El comprobante fue anulado y el stock fue devuelto"
+                        : "El comprobante fue anulado sin devolver stock";
+                    ok.ShowDialog(this);
+                    fil.Hide();
 
-                            pnl_sinProd.Visible = true;
-                            this.Close();
-
-                        }
-                    }
+                    pnl_sinProd.Visible = true;
+                    Close();
                 }
             }
             catch (Exception ex)
             {
-                throw; 
+                MessageBox.Show(
+                    "No se pudo anular el comprobante.\n\n" + ex.Message,
+                    "Anulación no realizada",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
         }
 

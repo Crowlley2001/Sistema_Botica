@@ -330,6 +330,27 @@ namespace CapaDatos
             return respuesta;
         }
 
+        public bool CD_TieneCajaAbiertaUsuario(int idUsuario)
+        {
+            const string consulta = @"
+SELECT CASE WHEN EXISTS
+(
+    SELECT 1
+    FROM dbo.Cierre_Caja
+    WHERE Id_Usu = @IdUsuario
+      AND Estado_cierre = 'Abierto'
+      AND CONVERT(date, Fecha_Cierre) = CONVERT(date, GETDATE())
+) THEN 1 ELSE 0 END;";
+
+            using (SqlConnection cn = new SqlConnection(conectar()))
+            using (SqlCommand cmd = new SqlCommand(consulta, cn))
+            {
+                cmd.Parameters.Add("@IdUsuario", SqlDbType.Int).Value = idUsuario;
+                cn.Open();
+                return Convert.ToInt32(cmd.ExecuteScalar()) == 1;
+            }
+        }
+
 
 
         //------------------------------------- MÉTODO PARA CALCULAR VENTAS POR TIPO DE DOCUMENTO ------------------------------------------//

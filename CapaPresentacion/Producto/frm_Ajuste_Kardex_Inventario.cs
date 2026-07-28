@@ -115,9 +115,14 @@ namespace CapaPresentacion.Producto
         //------------------------ EVENTO TEXTCHANGED DEL TEXBOX BUSCAR------------------------//
         private void txt_buscar_TextChanged_1(object sender, EventArgs e)
         {
-            if (txt_buscar.Text.Trim().Length > 2)
+            string valor = txt_buscar.Text.Trim();
+            if (valor.Length == 0)
             {
-                Buscar_ProductoID(txt_buscar.Text);
+                Mostrar_Producto();
+            }
+            else if (valor.Length >= 2)
+            {
+                Buscar_ProductoID(valor);
             }
         }
 

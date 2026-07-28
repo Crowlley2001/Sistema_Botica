@@ -73,6 +73,15 @@ namespace CapaNegocio
             return objCapaDatos.CD_validar_InicioDoble_caja();
         }
 
+        public bool CN_TieneCajaAbiertaUsuario(int idUsuario)
+        {
+            if (idUsuario <= 0)
+                throw new ArgumentOutOfRangeException(
+                    nameof(idUsuario), "El usuario de caja no es válido.");
+
+            return objCapaDatos.CD_TieneCajaAbiertaUsuario(idUsuario);
+        }
+
         //------------------------ MÉTODO PARA CALCULAR VENTAS POR TIPO DE DOCUMENTO ----------------------------//
         public DataTable CN_Calcular_Ventas_PorTipo_Doc(string nomTipoDoc)
         {

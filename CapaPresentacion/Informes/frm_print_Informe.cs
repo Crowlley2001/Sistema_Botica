@@ -78,7 +78,8 @@ namespace CapaPresentacion.Informes
         }
         private void CrearQR_Fisico(string textoQR, string nroDoc)
         {
-            string ruta = @"F:\PORTAFOLIO\SISTEMA_BOTICA\CPE_2\QR_TEMP\";
+            string ruta = Path.Combine(
+                Application.StartupPath, "CPE_2", "QR_TEMP");
 
             // 1. Si la carpeta no existe, la crea
             if (!Directory.Exists(ruta))
@@ -99,7 +100,9 @@ namespace CapaPresentacion.Informes
             // 3. Crear y guardar BMP
             using (Bitmap bmp = writer.Write(textoQR))
             {
-                bmp.Save(ruta + nroDoc + ".BMP", ImageFormat.Bmp);
+                bmp.Save(
+                    Path.Combine(ruta, nroDoc + ".BMP"),
+                    ImageFormat.Bmp);
             }
         }
         private void btn_Print_Click(object sender, EventArgs e)

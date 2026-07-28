@@ -22,6 +22,10 @@ namespace CapaEntidad
         private string _EstadoCaja;
         private double _Total_Dscuentos;
         private string _ModoCierre;
+        private string _CodigoMoneda = "PEN";
+        private decimal _TipoCambio = 1m;
+        private decimal _ImporteMoneda;
+        private decimal _ImporteSoles;
 
         public int Idcaja { get => _Idcaja; set => _Idcaja = value; }
         public DateTime Fecha_Caja { get => _Fecha_Caja; set => _Fecha_Caja = value; }
@@ -37,6 +41,10 @@ namespace CapaEntidad
         public string EstadoCaja { get => _EstadoCaja; set => _EstadoCaja = value; }
         public double Total_Dscuentos { get => _Total_Dscuentos; set => _Total_Dscuentos = value; }
         public string ModoCierre { get => _ModoCierre; set => _ModoCierre = value; }
+        public string CodigoMoneda { get => _CodigoMoneda; set => _CodigoMoneda = value; }
+        public decimal TipoCambio { get => _TipoCambio; set => _TipoCambio = value; }
+        public decimal ImporteMoneda { get => _ImporteMoneda; set => _ImporteMoneda = value; }
+        public decimal ImporteSoles { get => _ImporteSoles; set => _ImporteSoles = value; }
    
     }
 }

@@ -360,7 +360,7 @@ namespace CapaPresentacion.Cajas
                 VentaNeto = IngresoBruto - Convert.ToDouble(txt_salida_efectivo.Text);
                 txt_ingreso_efectivo.Text = VentaNeto.ToString("###0.00");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 throw;
             }

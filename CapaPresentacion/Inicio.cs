@@ -2,6 +2,7 @@
 using CapaEntidad;
 using CapaNegocio;
 using CapaPresentacion.Cajas;
+using CapaPresentacion.Comprobantes;
 using CapaPresentacion.Compras;
 using CapaPresentacion.Factura;
 using CapaPresentacion.Informes;
@@ -41,10 +42,27 @@ namespace CapaPresentacion
         TabPage tabAlmacenGuardada;
         TabPage tabMovimientiosGuardada;
         TabPage tabCajadeCirres;
+        private Guna2ComboBox cbo_monedaVenta;
+        private Guna2TextBox txt_resumenMonedaVenta;
+        private decimal tipoCambioVenta = 1m;
+        private string codigoMonedaVenta = "PEN";
+        private VentaCompleta ultimaVentaRegistrada;
+        private string hashCpeActual = string.Empty;
+        private string estadoCpeActual = "NO APLICA";
+        private string advertenciaCpeActual = string.Empty;
+        private readonly IPasarelaPago pasarelaPago = new PasarelaPagoManual();
+        private readonly ImageList imagenesProductosAlmacen = new ImageList();
+        private Guna2Panel panelCargaProductos;
+        private Guna2CircleProgressBar circuloCargaProductos;
+        private Label etiquetaCargaProductos;
 
         public Inicio()
         {
             InitializeComponent();
+            ConstruirCapaCargaProductos();
+            txt_dni.MaxLength = 11;
+            txt_dni.KeyPress += txt_dni_KeyPress_Documento;
+            cbo_tipodoc.SelectedIndexChanged += cbo_tipodoc_SelectedIndexChanged_Documento;
         }
 
 
@@ -81,15 +99,18 @@ namespace CapaPresentacion
             Configura_ListViewProductoDetalle();
             Configura_ListView_Docs();
             Llenar_Combo_TipoDoc();
+            InicializarControlesMoneda();
+            InicializarMetodosPago();
             Configura_ListView_Productos_Almacen();
             Configura_ListView_Productos_Movimiento();
             Configurar_listView_CierreCaja();
             Cargar_Todos_Usuarios();
             Cargar_Todos_Cierres();
             Construir_Menu();
+            InicializarMenuCpe();
             cargo = true;
 
-
+            ConstruirDashboardProfesional();
 
             lsv_Pdet.Visible = false;
 
@@ -133,24 +154,36 @@ namespace CapaPresentacion
                 caja.ShowDialog(this);
                 fil.Hide();
             }
-            //Cargamos
-            lbl_nomUser.Text = Cls_ModalCategoria.Nombre + "" + Cls_ModalCategoria.Apellido;
+            ActualizarEncabezadoUsuario();
+        }
+
+        private void ActualizarEncabezadoUsuario()
+        {
+            lbl_nomUser.Text =
+                (Cls_ModalCategoria.Nombre + " " + Cls_ModalCategoria.Apellido).Trim();
             lbl_Rol.Text = Cls_ModalCategoria.Nomerol;
 
-            // Validar foto
-            if (string.IsNullOrWhiteSpace(Cls_ModalCategoria.Foto))
-                return;
-
-            if (System.IO.File.Exists(Cls_ModalCategoria.Foto))
+            string foto = Cls_ModalCategoria.Foto;
+            if (!string.IsNullOrWhiteSpace(foto) && System.IO.File.Exists(foto))
             {
-                pic_user.Load(Cls_ModalCategoria.Foto);
+                using (Image imagen = Image.FromFile(foto))
+                    pic_user.Image = new Bitmap(imagen);
             }
             else
             {
                 pic_user.Image = Properties.Resources.circulo_login;
             }
+            pic_user.SizeMode = PictureBoxSizeMode.Zoom;
         }
 
+        private static string NormalizarTextoMovimiento(string texto)
+        {
+            string valor = (texto ?? string.Empty).Trim();
+            if (valor.IndexOf("Ventas al", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                valor.IndexOf("blico", StringComparison.OrdinalIgnoreCase) >= 0)
+                return "Por Ventas al Público";
+            return valor;
+        }
 
 
         private void Construir_Menu()
@@ -271,36 +304,15 @@ namespace CapaPresentacion
 
         public void Tocar_audioError()
         {
-            try
-            {
-                string ruta = AppDomain.CurrentDomain.BaseDirectory;
-                SoundPlayer son = new SoundPlayer(ruta + @"\ErrorWin.wav");
-                son.Play();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Error al reproducir audio: " + ex.Message);
-            }
+            AudioSistema.Reproducir("ErrorWin.wav");
         }
         public void Tocar_audioCaja()
         {
-            try
-            {
-                string ruta = AppDomain.CurrentDomain.BaseDirectory;
-                SoundPlayer son = new SoundPlayer(ruta + @"\Efectocaja.wav");
-                son.Play();
-            }
-            catch (Exception ex) { Console.WriteLine(ex.Message); }
+            AudioSistema.Reproducir("Efectocaja.wav");
         }
         public void Tocar_Timbre()
         {
-            try
-            {
-                string ruta = AppDomain.CurrentDomain.BaseDirectory;
-                SoundPlayer son = new SoundPlayer(ruta + @"\timbre1.wav");
-                son.Play();
-            }
-            catch (Exception ex) { Console.WriteLine(ex.Message); }
+            AudioSistema.Reproducir("timbre1.wav");
         }
 
 
@@ -554,6 +566,23 @@ namespace CapaPresentacion
                     PreCompra = Convert.ToDouble(data.Rows[0]["Pre_CompraS"]);
                     PreVenta = Convert.ToDouble(data.Rows[0]["Pre_venta"]);
                     UtiLiUnitaria = PreVenta - PreCompra;
+
+                    DateTime fechaVencimiento;
+                    string fechaTexto = data.Columns.Contains("FechaVncmnto")
+                        ? Convert.ToString(data.Rows[0]["FechaVncmnto"]).Trim()
+                        : string.Empty;
+                    if (DateTime.TryParse(fechaTexto, out fechaVencimiento) &&
+                        fechaVencimiento.Date < DateTime.Today)
+                    {
+                        filtro.Show();
+                        ver.lbl_msm.Text =
+                            "No se puede vender este producto porque venció el " +
+                            fechaVencimiento.ToString("dd/MM/yyyy") + ".";
+                        ver.ShowDialog(this);
+                        filtro.Hide();
+                        return;
+                    }
+
                     if (xstock > 0)
                     {
                         filtro.Show();
@@ -602,7 +631,14 @@ namespace CapaPresentacion
                 }
                 else if (data.Rows.Count > 1)
                 {
-                    //Abrir modal para seleccionar producto
+                    Configura_ListView_ProductoVender(data, "buscar");
+                    PintasFilas();
+                    if (lsv_Pdet.Items.Count > 0)
+                    {
+                        lsv_Pdet.Items[0].Selected = true;
+                        lsv_Pdet.Items[0].EnsureVisible();
+                    }
+                    lsv_Pdet.Focus();
                 }
                 else
                 {
@@ -655,7 +691,7 @@ namespace CapaPresentacion
                     //Cacular PAGO TOTAL
                     totalventa = totalventa + Convert.ToDouble(lsv_Det.Items[i].SubItems[4].Text);
                     subtotal = totalventa / 1.18;
-                    igv = totalventa * 0.18;
+                    igv = totalventa - subtotal;
 
                     GanaciaTotal = GanaciaTotal + Convert.ToDouble(lsv_Det.Items[i].SubItems[6].Text);
                 }
@@ -665,6 +701,7 @@ namespace CapaPresentacion
                 txt_totalpagar.Text = totalventa.ToString("###0.00");
                 lbl_totalDscto.Text = totalDscto.ToString("###0.00");
                 lbl_TotalGanancia.Text = GanaciaTotal.ToString("###0.00");
+                ActualizarResumenMoneda();
 
             }
             catch (Exception ex)
@@ -947,7 +984,11 @@ namespace CapaPresentacion
         private void btn_Cliente_Click(object sender, EventArgs e)
         {
             Filtro filtro = new Filtro();
-            frm_Lista_Clientes lis = new frm_Lista_Clientes();
+            frm_Lista_Clientes lis = new frm_Lista_Clientes
+            {
+                RequiereRuc = cbo_tipodoc.Text.Trim()
+                    .Equals("Factura", StringComparison.OrdinalIgnoreCase)
+            };
             filtro.Show();
             lis.ShowDialog(this);
             filtro.Hide();
@@ -960,6 +1001,42 @@ namespace CapaPresentacion
             }
         }
 
+        private void cbo_tipodoc_SelectedIndexChanged_Documento(object sender, EventArgs e)
+        {
+            bool esFactura = cbo_tipodoc.Text.Trim()
+                .Equals("Factura", StringComparison.OrdinalIgnoreCase);
+
+            txt_dni.MaxLength = esFactura ? 11 : 11;
+            txt_dni.PlaceholderText = esFactura
+                ? "RUC de 11 dígitos"
+                : "DNI (8) o RUC (11)";
+
+            string documento = SoloDigitos(txt_dni.Text);
+            if (!esFactura || documento.Length == 0 || documento.Length == 11)
+                return;
+
+            lbl_idcliente.Text = string.Empty;
+            txt_cliente.Text = string.Empty;
+            txt_dni.Text = string.Empty;
+            lbl_direccion.Text = string.Empty;
+
+            Filtro filtro = new Filtro();
+            frm_Advertencia advertencia = new frm_Advertencia();
+            filtro.Show();
+            advertencia.lbl_msm.Text =
+                "La factura requiere un cliente con RUC válido de 11 dígitos. " +
+                "Seleccione uno existente o registre uno nuevo.";
+            advertencia.ShowDialog(this);
+            filtro.Hide();
+            txt_cliente.Focus();
+        }
+
+        private void txt_dni_KeyPress_Documento(object sender, KeyPressEventArgs e)
+        {
+            if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
+                e.Handled = true;
+        }
+
         //----------------------------------- METODO VALIDAR VENTA -------------------------------------------//
         private bool ValidarVenta()
         {
@@ -968,9 +1045,257 @@ namespace CapaPresentacion
             if (lsv_Det.Items.Count == 0) { filtro.Show(); ver.lbl_msm.Text = "Por favor, ingresa un producto al carrito"; ver.ShowDialog(this); filtro.Hide(); return false; }
             if (lbl_idcliente.Text.Trim().Length < 2) { filtro.Show(); ver.lbl_msm.Text = "Por favor, ingresa un cliente para la venta"; ver.ShowDialog(this); filtro.Hide(); return false; }
             if (cbo_tipodoc.SelectedIndex == -1) { filtro.Show(); ver.lbl_msm.Text = "Por favor, seleciona el tipo de documento a emitir"; ver.ShowDialog(this); filtro.Hide(); cbo_tipodoc.Focus(); return false; }
+            string tipoComprobante = cbo_tipodoc.Text.Trim();
+            string documentoCliente = SoloDigitos(txt_dni.Text);
+
+            if (tipoComprobante.Equals("Factura", StringComparison.OrdinalIgnoreCase) &&
+                documentoCliente.Length != 11)
+            {
+                filtro.Show();
+                ver.lbl_msm.Text = "Para emitir una factura debe seleccionar un cliente con RUC de 11 dígitos.";
+                ver.ShowDialog(this);
+                filtro.Hide();
+                return false;
+            }
+
+            if (tipoComprobante.Equals("Factura", StringComparison.OrdinalIgnoreCase) &&
+                !ValidadorDocumentoPeru.EsRucValido(documentoCliente))
+            {
+                filtro.Show();
+                ver.lbl_msm.Text =
+                    "El RUC del cliente no supera la validación del dígito verificador.";
+                ver.ShowDialog(this);
+                filtro.Hide();
+                return false;
+            }
+
+            decimal totalVenta;
+            if (!decimal.TryParse(txt_totalpagar.Text, out totalVenta))
+            {
+                filtro.Show();
+                ver.lbl_msm.Text = "El total de la venta no tiene un formato válido.";
+                ver.ShowDialog(this);
+                filtro.Hide();
+                return false;
+            }
+
+            if (tipoComprobante.Equals("Boleta", StringComparison.OrdinalIgnoreCase) &&
+                totalVenta > 700m &&
+                documentoCliente.Length != 8 &&
+                documentoCliente.Length != 11)
+            {
+                filtro.Show();
+                ver.lbl_msm.Text = "En una boleta mayor a S/ 700 debe identificar al cliente con DNI o RUC.";
+                ver.ShowDialog(this);
+                filtro.Hide();
+                return false;
+            }
+
+            if (QrSunatContenido.EsComprobanteElectronico(tipoComprobante) &&
+                SoloDigitos(ObtenerRucEmisor()).Length != 11)
+            {
+                filtro.Show();
+                ver.lbl_msm.Text = "Configure el RUC de 11 dígitos de la empresa antes de emitir boletas o facturas.";
+                ver.ShowDialog(this);
+                filtro.Hide();
+                return false;
+            }
+
+            ResultadoPago validacionPago = pasarelaPago.Validar(
+                cbo_tipopago.Text,
+                txt_NroOperacion.Text,
+                ObtenerImporteMoneda(totalVenta),
+                codigoMonedaVenta);
+            if (!validacionPago.Aprobado)
+            {
+                filtro.Show();
+                ver.lbl_msm.Text = validacionPago.Mensaje;
+                ver.ShowDialog(this);
+                filtro.Hide();
+                txt_NroOperacion.Focus();
+                return false;
+            }
 
             return true;
 
+        }
+
+        private void InicializarMetodosPago()
+        {
+            cbo_tipopago.Items.Clear();
+            cbo_tipopago.Items.AddRange(new object[]
+            {
+                "Efectivo",
+                "Tarjeta débito",
+                "Tarjeta crédito",
+                "Yape",
+                "Plin",
+                "Transferencia bancaria"
+            });
+            cbo_tipopago.MaxDropDownItems = 6;
+            cbo_tipopago.SelectedIndexChanged -= cbo_tipopago_SelectedIndexChanged;
+            cbo_tipopago.SelectedIndexChanged += cbo_tipopago_SelectedIndexChanged;
+            cbo_tipopago.SelectedIndex = 0;
+            ActualizarReferenciaPago();
+        }
+
+        private void cbo_tipopago_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            ActualizarReferenciaPago();
+        }
+
+        private void ActualizarReferenciaPago()
+        {
+            bool requiereReferencia = !PasarelaPagoManual.EsEfectivo(cbo_tipopago.Text);
+            txt_NroOperacion.Enabled = requiereReferencia;
+            txt_NroOperacion.PlaceholderText = requiereReferencia
+                ? "Código de operación / voucher"
+                : "No aplica para efectivo";
+            txt_NroOperacion.Text = string.Empty;
+        }
+
+        private void InicializarControlesMoneda()
+        {
+            Label lblMoneda = new Label
+            {
+                AutoSize = true,
+                Font = new Font("Segoe UI", 9F),
+                ForeColor = Color.DimGray,
+                Location = new Point(823, 514),
+                Text = "Moneda de cobro:"
+            };
+
+            Label lblResumen = new Label
+            {
+                AutoSize = true,
+                Font = new Font("Segoe UI", 9F),
+                ForeColor = Color.DimGray,
+                Location = new Point(960, 514),
+                Text = "T.C. / equivalente:"
+            };
+
+            cbo_monedaVenta = new Guna2ComboBox
+            {
+                BorderColor = Color.DimGray,
+                BorderRadius = 6,
+                DrawMode = DrawMode.OwnerDrawFixed,
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new Font("Segoe UI", 9F),
+                ForeColor = Color.DimGray,
+                ItemHeight = 30,
+                Location = new Point(823, 537),
+                Size = new Size(130, 36)
+            };
+            cbo_monedaVenta.Items.AddRange(new object[] { "PEN - Soles", "USD - Dólares" });
+            cbo_monedaVenta.SelectedIndexChanged += cbo_monedaVenta_SelectedIndexChanged;
+
+            txt_resumenMonedaVenta = new Guna2TextBox
+            {
+                BorderColor = Color.DimGray,
+                BorderRadius = 6,
+                Font = new Font("Segoe UI", 9F),
+                ForeColor = Color.DimGray,
+                Location = new Point(960, 537),
+                ReadOnly = true,
+                Size = new Size(134, 36),
+                TextAlign = HorizontalAlignment.Center
+            };
+
+            guna2GroupBox1.Controls.Add(lblMoneda);
+            guna2GroupBox1.Controls.Add(lblResumen);
+            guna2GroupBox1.Controls.Add(cbo_monedaVenta);
+            guna2GroupBox1.Controls.Add(txt_resumenMonedaVenta);
+            cbo_monedaVenta.BringToFront();
+            txt_resumenMonedaVenta.BringToFront();
+
+            dtp_fechaEmision.ValueChanged += dtp_fechaEmision_ValueChanged_Moneda;
+            cbo_monedaVenta.SelectedIndex = 0;
+        }
+
+        private void cbo_monedaVenta_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (cbo_monedaVenta.SelectedIndex != 1)
+            {
+                codigoMonedaVenta = "PEN";
+                tipoCambioVenta = 1m;
+                ActualizarResumenMoneda();
+                return;
+            }
+
+            DataTable cambio = CN_TipoCambio.CN_Buscar_TipoCambio_Fecha(
+                dtp_fechaEmision.Value.Date);
+
+            decimal venta;
+            if (cambio == null ||
+                cambio.Rows.Count == 0 ||
+                !decimal.TryParse(Convert.ToString(cambio.Rows[0]["Venta"]), out venta) ||
+                venta <= 0)
+            {
+                MessageBox.Show(
+                    "No existe un tipo de cambio de venta válido para la fecha seleccionada.",
+                    "Moneda de la venta",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                cbo_monedaVenta.SelectedIndex = 0;
+                return;
+            }
+
+            codigoMonedaVenta = "USD";
+            tipoCambioVenta = venta;
+            ActualizarResumenMoneda();
+        }
+
+        private void dtp_fechaEmision_ValueChanged_Moneda(object sender, EventArgs e)
+        {
+            if (cbo_monedaVenta != null && cbo_monedaVenta.SelectedIndex == 1)
+                cbo_monedaVenta_SelectedIndexChanged(sender, e);
+        }
+
+        private void ActualizarResumenMoneda()
+        {
+            if (txt_resumenMonedaVenta == null)
+                return;
+
+            decimal totalSoles;
+            if (!decimal.TryParse(txt_totalpagar.Text, out totalSoles))
+                totalSoles = 0m;
+
+            if (codigoMonedaVenta == "USD" && tipoCambioVenta > 0)
+            {
+                decimal totalDolares = Math.Round(totalSoles / tipoCambioVenta, 2);
+                txt_resumenMonedaVenta.Text =
+                    tipoCambioVenta.ToString("0.000") + " / $ " + totalDolares.ToString("0.00");
+            }
+            else
+            {
+                txt_resumenMonedaVenta.Text = "1.000 / S/ " + totalSoles.ToString("0.00");
+            }
+        }
+
+        private decimal ObtenerImporteMoneda(decimal totalSoles)
+        {
+            if (codigoMonedaVenta == "USD" && tipoCambioVenta > 0)
+                return Math.Round(totalSoles / tipoCambioVenta, 2);
+
+            return Math.Round(totalSoles, 2);
+        }
+
+        private static string SoloDigitos(string valor)
+        {
+            if (string.IsNullOrWhiteSpace(valor))
+                return string.Empty;
+
+            return new string(valor.Where(char.IsDigit).ToArray());
+        }
+
+        private string ObtenerRucEmisor()
+        {
+            CN_Empresa empresa = new CN_Empresa();
+            DataTable datos = empresa.MostrarDatosEmpresa();
+            if (datos == null || datos.Rows.Count == 0)
+                return string.Empty;
+
+            return Convert.ToString(datos.Rows[0]["nroRuc"]);
         }
 
         //---------------------------------- METODO PARA TERMINAR LA VENTA -----------------------------------//
@@ -978,64 +1303,166 @@ namespace CapaPresentacion
         {
             Filtro filtro = new Filtro();
             frm_Msm_bueno ok = new frm_Msm_bueno();
-            frm_TipoPago_Credito cred = new frm_TipoPago_Credito();
-            CN_Documento objdoc = new CN_Documento();
             frm_TerminarVenta fin = new frm_TerminarVenta();
-            CN_Pedido objped = new CN_Pedido();
             frm_print_Ticket imprimir = new frm_print_Ticket();
 
-            if (ValidarVenta() == true)
+            int idUsuario = Cls_ModalCategoria.IdUsu;
+            if (idUsuario <= 0 ||
+                !new CN_CierreCaja().CN_TieneCajaAbiertaUsuario(idUsuario))
             {
-                GuardarPedido();
-                if (CD_Pedido.temp_saved == true && CD_Pedido.det_saved == true)
+                using (Filtro fondoAviso = new Filtro())
+                using (frm_Advertencia aviso = new frm_Advertencia())
                 {
-                    objped.CN_Cambiar_EstadoPedido(lbl_NrPedido.Text);
-                    Guardar_Documento();
-                    if (CD_Documento.doc_saved == true)
-                    {
-                        Guardar_InresoCaja();
-                        if (CD_Caja.cajaSaved == true)
-                        {
-                            {
-                                // frm_Msm_bueno
-                                filtro.Show();
-                                tocar_timbreCaja();
-                                ok.Lbl_msm1.Text = "¡La venta se ha registrado con éxito!";
-                                ok.ShowDialog(this);
-                                filtro.Hide();
-
-                                // frm_TerminarVenta
-                                filtro.Show();
-                                fin.txt_Total_acobrar.Text = txt_totalpagar.Text;
-                                fin.TipoPago = cbo_tipopago.Text;
-                                fin.ShowDialog(this);
-                                filtro.Hide();
-
-
-                                if (fin.Tag != null && fin.Tag.ToString() == "A")
-                                {
-                                    //Vamos imprimir
-                                    Registrar_Archivos_Temporales();
-                                    filtro.Show();
-                                    imprimir.NrDoc = lbl_NroDocu.Text;
-                                    imprimir.lbl_nroDoc.Text = lbl_NroDocu.Text;
-                                    imprimir.TipoDoc = "nota";
-                                    imprimir.ShowDialog(this);
-                                    filtro.Hide();
-
-                                    Registrar_MovimientoKardex();
-                                    Limpiar_venta();
-                                    pnl_sinProd.Visible = true;
-                                    lsv_Pdet.Visible = false;
-                                }
-                                else
-                                {
-
-                                }
-                            }
-                        }
-                    }
+                    aviso.lbl_msm.Text =
+                        "¡Caja requerida!\n\n" +
+                        "Su usuario no tiene una caja abierta.\n" +
+                        "Abra la caja para continuar con la venta.";
+                    fondoAviso.Show();
+                    aviso.ShowDialog(this);
+                    fondoAviso.Hide();
                 }
+                return;
+            }
+
+            if (!ValidarVenta())
+                return;
+
+            // La venta no debe registrarse hasta que el usuario confirme el cobro.
+            filtro.Show();
+            decimal totalCobroSoles = Convert.ToDecimal(txt_totalpagar.Text);
+            fin.txt_Total_acobrar.Text = ObtenerImporteMoneda(totalCobroSoles).ToString("0.00");
+            fin.TipoPago = cbo_tipopago.Text;
+            fin.NroOperacion = txt_NroOperacion.Text.Trim();
+            fin.CodigoMoneda = codigoMonedaVenta;
+            fin.TipoCambio = tipoCambioVenta;
+            fin.ShowDialog(this);
+            filtro.Hide();
+
+            if (fin.Tag == null || fin.Tag.ToString() != "A")
+                return;
+
+            try
+            {
+                RegistrarVentaAtomica();
+                EmitirCpeSimulado();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "La venta no fue registrada. No se aplicó ningún cambio.\n\n" + ex.Message,
+                    "Error al registrar venta",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                return;
+            }
+
+            Registrar_Archivos_Temporales();
+
+            filtro.Show();
+            imprimir.NrDoc = lbl_NroDocu.Text;
+            imprimir.lbl_nroDoc.Text = lbl_NroDocu.Text;
+            imprimir.TipoDoc = cbo_tipodoc.Text;
+            imprimir.ShowDialog(this);
+            filtro.Hide();
+
+            tocar_timbreCaja();
+            ok.Lbl_msm1.Text = string.IsNullOrWhiteSpace(advertenciaCpeActual)
+                ? "¡La venta se ha registrado con éxito! CPE: " + estadoCpeActual
+                : "¡Venta registrada! " + advertenciaCpeActual;
+            ok.ShowDialog(this);
+
+            Limpiar_venta();
+            pnl_sinProd.Visible = true;
+            lsv_Pdet.Visible = false;
+            CargarDashboardProfesional();
+        }
+
+        private void RegistrarVentaAtomica()
+        {
+            decimal totalSoles = Convert.ToDecimal(txt_totalpagar.Text);
+            VentaCompleta venta = new VentaCompleta
+            {
+                IdCliente = lbl_idcliente.Text.Trim(),
+                IdTipoDocumento = Convert.ToInt32(cbo_tipodoc.SelectedValue),
+                FechaEmision = dtp_fechaEmision.Value,
+                SubTotal = Convert.ToDecimal(lbl_subtotal.Text),
+                Igv = Convert.ToDecimal(lbl_igv.Text),
+                TotalSoles = totalSoles,
+                TipoPago = cbo_tipopago.Text,
+                NroOperacion = txt_NroOperacion.Text.Trim(),
+                IdUsuario = Convert.ToInt32(Cls_ModalCategoria.IdUsu),
+                TotalGanancia = Convert.ToDecimal(lbl_TotalGanancia.Text),
+                TotalDescuento = Convert.ToDecimal(lbl_totalDscto.Text),
+                CodigoMoneda = codigoMonedaVenta,
+                TipoCambio = tipoCambioVenta,
+                ImporteMoneda = ObtenerImporteMoneda(totalSoles)
+            };
+
+            for (int i = 0; i < lsv_Det.Items.Count; i++)
+            {
+                ListViewItem item = lsv_Det.Items[i];
+                venta.Detalles.Add(new Detalle_Pedido
+                {
+                    Id_Pro = item.SubItems[0].Text.Trim(),
+                    Precio = Convert.ToDouble(item.SubItems[3].Text),
+                    Cantidad = Convert.ToDouble(item.SubItems[2].Text),
+                    Importe = Convert.ToDouble(item.SubItems[4].Text),
+                    Utilidad_Unit = Convert.ToDouble(item.SubItems[5].Text),
+                    TotalUtilidad = Convert.ToDouble(item.SubItems[6].Text),
+                    DescuentoDet = Convert.ToDouble(item.SubItems[7].Text)
+                });
+            }
+
+            CN_Venta negocio = new CN_Venta();
+            string idPedido;
+            string idDocumento;
+            negocio.RegistrarVentaCompleta(venta, out idPedido, out idDocumento);
+
+            lbl_NrPedido.Text = idPedido;
+            lbl_NroDocu.Text = idDocumento;
+            ultimaVentaRegistrada = venta;
+        }
+
+        private void EmitirCpeSimulado()
+        {
+            hashCpeActual = string.Empty;
+            advertenciaCpeActual = string.Empty;
+            estadoCpeActual = "NO APLICA";
+
+            if (!QrSunatContenido.EsComprobanteElectronico(cbo_tipodoc.Text))
+                return;
+
+            try
+            {
+                decimal totalSoles = Convert.ToDecimal(txt_totalpagar.Text);
+                CpeSolicitud solicitud = new CpeSolicitud
+                {
+                    IdDocumento = lbl_NroDocu.Text.Trim(),
+                    TipoComprobante = cbo_tipodoc.Text.Trim(),
+                    FechaEmision = dtp_fechaEmision.Value,
+                    DocumentoCliente = SoloDigitos(txt_dni.Text),
+                    NombreCliente = txt_cliente.Text.Trim(),
+                    CodigoMoneda = codigoMonedaVenta,
+                    SubTotal = codigoMonedaVenta == "USD"
+                        ? ObtenerImporteMoneda(Convert.ToDecimal(lbl_subtotal.Text))
+                        : Convert.ToDecimal(lbl_subtotal.Text),
+                    Igv = codigoMonedaVenta == "USD"
+                        ? ObtenerImporteMoneda(Convert.ToDecimal(lbl_igv.Text))
+                        : Convert.ToDecimal(lbl_igv.Text),
+                    Total = ObtenerImporteMoneda(totalSoles),
+                    Venta = ultimaVentaRegistrada
+                };
+
+                CpeResultado resultado =
+                    new CN_CpeElectronico().EmitirYGuardar(solicitud);
+                hashCpeActual = resultado.Hash;
+                estadoCpeActual = resultado.Estado;
+            }
+            catch (Exception ex)
+            {
+                estadoCpeActual = "PENDIENTE_SIMULACION";
+                advertenciaCpeActual =
+                    "El CPE simulado quedó pendiente: " + ex.Message;
             }
         }
 
@@ -1048,6 +1475,10 @@ namespace CapaPresentacion
             lsv_Det.Items.Clear();
             cbo_tipopago.SelectedIndex = 0;
             cbo_tipodoc.SelectedIndex = 0;
+            ultimaVentaRegistrada = null;
+            hashCpeActual = string.Empty;
+            estadoCpeActual = "NO APLICA";
+            advertenciaCpeActual = string.Empty;
             txt_buscarProd.Text = "";
             txt_buscarProd.Focus();
             Buscar_Cliente_ParalaVenta("C01");
@@ -1056,6 +1487,8 @@ namespace CapaPresentacion
             lbl_igv.Text = "0.00";
             lbl_subtotal.Text = "0.00";
             lbl_NrPedido.Text = "";
+            if (cbo_monedaVenta != null)
+                cbo_monedaVenta.SelectedIndex = 0;
             btn_reimprimir.Enabled = false;
             btn_terminarVenta.Enabled = true;
             btn_atenderotro.Enabled = true;
@@ -1064,11 +1497,7 @@ namespace CapaPresentacion
         //-------------------------------------- METODO TIMBRE  PEDIDO ---------------------------------------//
         private void tocar_timbreCaja()
         {
-            string ruta;
-            ruta = Application.StartupPath;
-            System.Media.SoundPlayer son;
-            son = new System.Media.SoundPlayer(ruta + @"\timbre1.wav");
-            son.Play();
+            AudioSistema.Reproducir("timbre1.wav");
         }
 
 
@@ -1105,10 +1534,16 @@ namespace CapaPresentacion
                         det.Utilidad_Unit = Convert.ToDouble(lis.SubItems[5].Text);
                         det.TotalUtilidad = Convert.ToDouble(lis.SubItems[6].Text);
                         det.DescuentoDet = Convert.ToDouble(lis.SubItems[7].Text);
+                        obj.CN_Registrar_DetallePedido(det);
+
+                        if (!CD_Pedido.det_saved)
+                        {
+                            throw new InvalidOperationException(
+                                "No se pudo registrar el producto " + det.Id_Pro +
+                                " en el detalle de la venta.");
+                        }
                     }
-                    obj.CN_Registrar_DetallePedido(det);
                 }
-                obj.CN_Cambiar_EstadoPedido(lbl_NroDocu.Text);
             }
             catch (Exception ex)
             {
@@ -1136,6 +1571,11 @@ namespace CapaPresentacion
                 doc.Id_Usu = Convert.ToInt32(Cls_ModalCategoria.IdUsu);
                 doc.TotalGanancia = Convert.ToDouble(lbl_TotalGanancia.Text);
                 doc.TotalDscuento = Convert.ToDouble(lbl_totalDscto.Text);
+                decimal totalSoles = Convert.ToDecimal(txt_totalpagar.Text);
+                doc.CodigoMoneda = codigoMonedaVenta;
+                doc.TipoCambio = tipoCambioVenta;
+                doc.ImporteSoles = Math.Round(totalSoles, 2);
+                doc.ImporteMoneda = ObtenerImporteMoneda(totalSoles);
 
                 obj.RegistrarDocumento(doc);
                 if (CD_Pedido.temp_saved == true)
@@ -1169,6 +1609,11 @@ namespace CapaPresentacion
                 caja.TipoPago = cbo_tipopago.Text;
                 caja.GeneradoPor = cbo_tipodoc.Text;
                 caja.Total_Dscuentos = Convert.ToDouble(lbl_totalDscto.Text);
+                decimal totalSoles = Convert.ToDecimal(txt_totalpagar.Text);
+                caja.CodigoMoneda = codigoMonedaVenta;
+                caja.TipoCambio = tipoCambioVenta;
+                caja.ImporteSoles = Math.Round(totalSoles, 2);
+                caja.ImporteMoneda = ObtenerImporteMoneda(totalSoles);
                 obj.CN_Registrar_Mov_Caja(caja);
             }
             catch (Exception ex)
@@ -1228,7 +1673,7 @@ namespace CapaPresentacion
                             //Salida
                             kar.Cantidad_Out = xcantvendida;
                             kar.Precio_Out = precioCompraProd;
-                            kar.Total_Out = xcantvendida + precioCompraProd;
+                            kar.Total_Out = xcantvendida * precioCompraProd;
                             //Saldos
                             kar.Cantidad_saldo = stockprod - xcantvendida;
                             kar.Promedio = precioCompraProd;
@@ -1255,46 +1700,91 @@ namespace CapaPresentacion
         //---------------------------------------- METODO GENERAR QR -----------------------------------------//
         private void GenerarQR(string tipodoc, string totaldoc, string cliente, string nrodoc)
         {
-            string ruta = @"F:\PORTAFOLIO\SISTEMA_BOTICA\CPE_2\QR_TEMP\";
+            string ruta = Path.Combine(Application.StartupPath, "CPE_2", "QR_TEMP");
 
             if (!Directory.Exists(ruta))
                 Directory.CreateDirectory(ruta);
 
-            string archivo = ruta + nrodoc + ".BMP";
+            string archivo = Path.Combine(ruta, nrodoc + ".png");
 
-            QRCodeEncoder qr = new QRCodeEncoder();
-            qr.QRCodeEncodeMode = QRCodeEncoder.ENCODE_MODE.BYTE;
-            qr.QRCodeScale = 4;
-            qr.QRCodeErrorCorrect = QRCodeEncoder.ERROR_CORRECTION.M;
+            decimal total;
+            decimal igv;
+            if (!decimal.TryParse(totaldoc, out total) ||
+                !decimal.TryParse(lbl_igv.Text, out igv))
+            {
+                throw new InvalidOperationException(
+                    "No se pudo interpretar el total o el IGV para generar el QR.");
+            }
 
-            string contenido =
-                "Nro: " + nrodoc + "\n" +
-                "Documento: " + tipodoc + "\n" +
-                "Total: " + totaldoc + "\n" +
-                "Cliente: " + cliente;
+            decimal totalComprobante = codigoMonedaVenta == "USD"
+                ? ObtenerImporteMoneda(total)
+                : total;
+            decimal igvComprobante = codigoMonedaVenta == "USD"
+                ? ObtenerImporteMoneda(igv)
+                : igv;
 
-            Bitmap imgQR = new Bitmap(qr.Encode(contenido, Encoding.UTF8));
+            string contenido;
+            if (QrSunatContenido.EsComprobanteElectronico(tipodoc))
+            {
+                contenido = QrSunatContenido.Construir(
+                    ObtenerRucEmisor(),
+                    tipodoc,
+                    nrodoc,
+                    igvComprobante,
+                    totalComprobante,
+                    dtp_fechaEmision.Value,
+                    txt_dni.Text,
+                    hashCpeActual);
+            }
+            else
+            {
+                contenido =
+                    "Nro: " + nrodoc + "\n" +
+                    "Documento interno: " + tipodoc + "\n" +
+                    "Moneda: " + codigoMonedaVenta + "\n" +
+                    "Importe cobrado: " + totalComprobante.ToString("0.00") + "\n" +
+                    (codigoMonedaVenta == "USD"
+                        ? "Tipo de cambio: " + tipoCambioVenta.ToString("0.000000") + "\n" +
+                          "Equivalente soles: " + total.ToString("0.00") + "\n"
+                        : string.Empty) +
+                    "Cliente: " + cliente;
+            }
 
-            // 🔥 AQUÍ ESTÁ LA CLAVE
-            imgQR.Save(archivo, ImageFormat.Bmp);
+            var generador = new ZXing.BarcodeWriter
+            {
+                Format = ZXing.BarcodeFormat.QR_CODE,
+                Options = new ZXing.Common.EncodingOptions
+                {
+                    Width = 1200,
+                    Height = 1200,
+                    Margin = 4,
+                    PureBarcode = true
+                }
+            };
 
-            pic_QR.Image = imgQR; // opciona
+            using (Bitmap imgQR = generador.Write(contenido))
+            {
+                imgQR.SetResolution(96, 96);
+                imgQR.Save(archivo, ImageFormat.Png);
+                Image anterior = pic_QR.Image;
+                pic_QR.Image = new Bitmap(imgQR);
+                if (anterior != null)
+                    anterior.Dispose();
+            }
         }
 
 
         //------------------------------------- METODO CONVERTIR IMAGEN --------------------------------------//
         public static byte[] Convertir_Imagen_Bytes(Image img)
         {
-            string sTemp = Path.GetTempFileName();
-            FileStream fs = new FileStream(sTemp, FileMode.OpenOrCreate, FileAccess.ReadWrite);
-            img.Save(fs, System.Drawing.Imaging.ImageFormat.Png);
-            fs.Position = 0;
+            if (img == null)
+                throw new ArgumentNullException(nameof(img));
 
-            int imgLength = Convert.ToInt32(fs.Length);
-            byte[] bytes = new byte[imgLength];
-            fs.Read(bytes, 0, imgLength);
-            fs.Close();
-            return bytes;
+            using (MemoryStream memoria = new MemoryStream())
+            {
+                img.Save(memoria, System.Drawing.Imaging.ImageFormat.Png);
+                return memoria.ToArray();
+            }
         }
 
 
@@ -1303,8 +1793,11 @@ namespace CapaPresentacion
         {
 
             CN_Temporal obj = new CN_Temporal();
-            string RutaQR = @"F:\PORTAFOLIO\SISTEMA_BOTICA\CPE_2\QR_TEMP\"
-                            + lbl_NroDocu.Text + ".BMP";
+            string RutaQR = Path.Combine(
+                Application.StartupPath,
+                "CPE_2",
+                "QR_TEMP",
+                lbl_NroDocu.Text + ".png");
             // 1️⃣ GENERAR QR
             GenerarQR(
                 cbo_tipodoc.Text,
@@ -1327,7 +1820,8 @@ namespace CapaPresentacion
                 temp.SonT = Lbl_Son.Text;
                 temp.Vendedor = "Vendedor: " + Cls_ModalCategoria.Nombre;
                 temp.CodigoQr = RutaQR;   // SOLO la ruta
-                temp.HashCpe = "-";
+                temp.HashCpe = string.IsNullOrWhiteSpace(hashCpeActual)
+                    ? "-" : hashCpeActual;
                 temp.MotivoEmi = "Ventas";
                 temp.TipoPago = cbo_tipopago.Text;
 
@@ -1541,10 +2035,27 @@ namespace CapaPresentacion
             lis.Columns.Add("Tipo Pago", 120, HorizontalAlignment.Center);
             lis.Columns.Add("Total S/", 120, HorizontalAlignment.Center);
             lis.Columns.Add("Estado", 120, HorizontalAlignment.Center);
+            lis.Columns.Add("Estado CPE", 160, HorizontalAlignment.Center);
         }
 
         private void LLenarProducto_Carrito(DataTable data)
         {
+            Dictionary<string, string> estadosCpe =
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                DataTable estados = new CN_CpeElectronico().ListarEstados();
+                foreach (DataRow estado in estados.Rows)
+                {
+                    estadosCpe[Convert.ToString(estado["IdDocumento"]).Trim()] =
+                        Convert.ToString(estado["EstadoCpe"]).Trim();
+                }
+            }
+            catch
+            {
+                // La instalación puede estar todavía pendiente de la migración CPE.
+            }
+
             lsv_docs.Items.Clear();
             for (int i = 0; i < data.Rows.Count; i++)
             {
@@ -1557,6 +2068,15 @@ namespace CapaPresentacion
                 lis.SubItems.Add(dr["TipoPago"].ToString());
                 lis.SubItems.Add(dr["ImporteDoc"].ToString());
                 lis.SubItems.Add(dr["Estado_Doc"].ToString());
+                string idDocumento = dr["id_Doc"].ToString().Trim();
+                string estadoCpe;
+                if (!estadosCpe.TryGetValue(idDocumento, out estadoCpe))
+                {
+                    string tipo = dr["Documento"].ToString().Trim();
+                    estadoCpe = QrSunatContenido.EsComprobanteElectronico(tipo)
+                        ? "PENDIENTE" : "NO APLICA";
+                }
+                lis.SubItems.Add(estadoCpe);
                 lis.SubItems.Add(dr["Nombres"].ToString());
 
                 lsv_docs.Items.Add(lis);
@@ -2007,18 +2527,22 @@ namespace CapaPresentacion
             lis.GridLines = true;
             lis.FullRowSelect = true;
             lis.HeaderStyle = ColumnHeaderStyle.Nonclickable;
-            lis.Columns.Add("ID", 120, HorizontalAlignment.Center);
-            lis.Columns.Add("Nombre del Producto", 160, HorizontalAlignment.Center);
-            lis.Columns.Add("Presentacion", 100, HorizontalAlignment.Center);
-            lis.Columns.Add("Stock", 120, HorizontalAlignment.Center);
-            lis.Columns.Add("Pre-Compra", 120, HorizontalAlignment.Center);
-            lis.Columns.Add("Pre-Venta", 120, HorizontalAlignment.Center);
-            lis.Columns.Add("Utilidad", 120, HorizontalAlignment.Center);
-            lis.Columns.Add("Costo Total", 120, HorizontalAlignment.Center);
-            lis.Columns.Add("Estado", 120, HorizontalAlignment.Center);
-            lis.Columns.Add("Laboratorio", 160, HorizontalAlignment.Center);
-            lis.Columns.Add("Fecha Ingreso", 160, HorizontalAlignment.Center);
-            lis.Columns.Add("Fecha Vencimiento", 130, HorizontalAlignment.Center);
+            imagenesProductosAlmacen.ImageSize = new Size(64, 52);
+            imagenesProductosAlmacen.ColorDepth = ColorDepth.Depth32Bit;
+            lis.SmallImageList = imagenesProductosAlmacen;
+            lis.Columns.Add("ID / Foto", 185, HorizontalAlignment.Left);
+            lis.Columns.Add("Nombre del Producto", 290, HorizontalAlignment.Left);
+            lis.Columns.Add("Categoría", 120, HorizontalAlignment.Left);
+            lis.Columns.Add("Presentación", 90, HorizontalAlignment.Center);
+            lis.Columns.Add("Stock", 75, HorizontalAlignment.Center);
+            lis.Columns.Add("Pre-Compra", 85, HorizontalAlignment.Center);
+            lis.Columns.Add("Pre-Venta", 85, HorizontalAlignment.Center);
+            lis.Columns.Add("Utilidad", 75, HorizontalAlignment.Center);
+            lis.Columns.Add("Costo Total", 90, HorizontalAlignment.Center);
+            lis.Columns.Add("Estado", 75, HorizontalAlignment.Center);
+            lis.Columns.Add("Laboratorio", 120, HorizontalAlignment.Center);
+            lis.Columns.Add("Fecha Ingreso", 125, HorizontalAlignment.Center);
+            lis.Columns.Add("Vencimiento", 120, HorizontalAlignment.Center);
             lis.Columns.Add("Foto", 0, HorizontalAlignment.Center);
 
         }
@@ -2032,47 +2556,148 @@ namespace CapaPresentacion
         }
         private void LLenar_Producto_Almacen(DataTable data)
         {
-            pnl_almacen.Visible = false; // 👈 CLAVE
-            lsvAlmacen.Items.Clear();
-            double precom_sol = 0;
-            double preventa_1 = 0;
-            double preventa_2 = 0;
-            double utilidad = 0;
-            double valoralmacen = 0;
-
-            int totalfila = data.Rows.Count;
-            guna2CircleProgressBar1.Maximum = totalfila;
-
-
-            for (int i = 0; i < data.Rows.Count; i++)
+            MostrarCargaProductos(data.Rows.Count);
+            lsvAlmacen.BeginUpdate();
+            try
             {
-                DataRow dr = data.Rows[i];
-                guna2CircleProgressBar1.Value = i;
-                guna2CircleProgressBar1.Refresh();
+                pnl_almacen.Visible = false;
+                lsvAlmacen.Items.Clear();
+                imagenesProductosAlmacen.Images.Clear();
 
-                ListViewItem lis = new ListViewItem(dr["Id_Pro"].ToString());
-                lis.SubItems.Add(dr["Descripcion_Larga"].ToString());
-                lis.SubItems.Add(dr["Frmto_Compra"].ToString());
-                lis.SubItems.Add(dr["Stock_Actual"].ToString());
-                precom_sol = Convert.ToDouble(dr["Pre_CompraS"]);
-                lis.SubItems.Add(precom_sol.ToString("###0.00"));
-                preventa_1 = Convert.ToDouble(dr["Pre_venta"]);
-                lis.SubItems.Add(preventa_1.ToString("###0.00"));
-                utilidad = Convert.ToDouble(dr["UtilidadUnit"]);
-                lis.SubItems.Add(utilidad.ToString("###0.00"));
-                valoralmacen = Convert.ToDouble(dr["Valor_porCant"]);
-                lis.SubItems.Add(valoralmacen.ToString("###0.00"));
-                lis.SubItems.Add(dr["Estado_Pro"].ToString());
-                lis.SubItems.Add(dr["Laboratorio"].ToString());
-                lis.SubItems.Add(dr["FechaIngreso"].ToString());
-                lis.SubItems.Add(dr["FechaVncmnto"].ToString());
-                lis.SubItems.Add(dr["Foto"].ToString());
-                lsvAlmacen.Items.Add(lis);
+                for (int i = 0; i < data.Rows.Count; i++)
+                {
+                    DataRow dr = data.Rows[i];
+                    ListViewItem lis = new ListViewItem(dr["Id_Pro"].ToString());
+                    string rutaFoto = Convert.ToString(dr["Foto"]);
+                    string claveImagen = "producto_" + i;
+                    imagenesProductosAlmacen.Images.Add(
+                        claveImagen, CargarMiniaturaProducto(rutaFoto));
+                    lis.ImageKey = claveImagen;
+                    lis.SubItems.Add(dr["Descripcion_Larga"].ToString());
+                    lis.SubItems.Add(dr["Categoria"].ToString());
+                    lis.SubItems.Add(dr["Frmto_Compra"].ToString());
+                    lis.SubItems.Add(dr["Stock_Actual"].ToString());
+                    lis.SubItems.Add(Convert.ToDouble(dr["Pre_CompraS"]).ToString("###0.00"));
+                    lis.SubItems.Add(Convert.ToDouble(dr["Pre_venta"]).ToString("###0.00"));
+                    lis.SubItems.Add(Convert.ToDouble(dr["UtilidadUnit"]).ToString("###0.00"));
+                    lis.SubItems.Add(Convert.ToDouble(dr["Valor_porCant"]).ToString("###0.00"));
+                    lis.SubItems.Add(dr["Estado_Pro"].ToString());
+                    lis.SubItems.Add(dr["Laboratorio"].ToString());
+                    lis.SubItems.Add(dr["FechaIngreso"].ToString());
+                    lis.SubItems.Add(dr["FechaVncmnto"].ToString());
+                    lis.SubItems.Add(dr["Foto"].ToString());
+                    lsvAlmacen.Items.Add(lis);
 
+                    if (i % 10 == 0 || i == data.Rows.Count - 1)
+                    {
+                        circuloCargaProductos.Value = i + 1;
+                        etiquetaCargaProductos.Text =
+                            "Cargando productos... " + (i + 1) + " de " + data.Rows.Count;
+                        panelCargaProductos.Refresh();
+                        Application.DoEvents();
+                    }
+                }
+                PintasFilaAlmacen();
+                pnl_movim.Visible = false;
+                lbl_totalAlmacen.Text = lsvAlmacen.Items.Count.ToString();
             }
-            PintasFilaAlmacen();
-            pnl_movim.Visible = false;
-            lbl_totalAlmacen.Text = lsvAlmacen.Items.Count.ToString();
+            finally
+            {
+                lsvAlmacen.EndUpdate();
+                OcultarCargaProductos();
+            }
+        }
+
+        private Image CargarMiniaturaProducto(string rutaFoto)
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(rutaFoto) &&
+                    rutaFoto != "-" &&
+                    System.IO.File.Exists(rutaFoto))
+                {
+                    using (Image original = Image.FromFile(rutaFoto))
+                    {
+                        return CrearMiniaturaAjustada(original, new Size(64, 52));
+                    }
+                }
+            }
+            catch
+            {
+                // Una foto dañada no debe impedir mostrar todo el catálogo.
+            }
+
+            return CrearMiniaturaAjustada(Properties.Resources.Imagen7, new Size(64, 52));
+        }
+
+        private Image CrearMiniaturaAjustada(Image imagen, Size tamaño)
+        {
+            Bitmap miniatura = new Bitmap(tamaño.Width, tamaño.Height);
+            using (Graphics grafico = Graphics.FromImage(miniatura))
+            {
+                grafico.Clear(Color.White);
+                grafico.InterpolationMode =
+                    System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+
+                // El catálogo usa una miniatura rectangular para aprovechar
+                // completamente la altura de la fila y evitar franjas vacías.
+                grafico.DrawImage(imagen, 0, 0, tamaño.Width, tamaño.Height);
+            }
+            return miniatura;
+        }
+
+        private void ConstruirCapaCargaProductos()
+        {
+            panelCargaProductos = new Guna2Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.White,
+                Visible = false
+            };
+            circuloCargaProductos = new Guna2CircleProgressBar
+            {
+                Size = new Size(120, 120),
+                Location = new Point(
+                    (guna2GroupBox7.ClientSize.Width - 120) / 2,
+                    180),
+                FillColor = Color.Gainsboro,
+                ProgressColor = Color.FromArgb(156, 39, 176),
+                ProgressColor2 = Color.FromArgb(255, 128, 0),
+            };
+            circuloCargaProductos.ShadowDecoration.Mode =
+                Guna.UI2.WinForms.Enums.ShadowMode.Circle;
+            etiquetaCargaProductos = new Label
+            {
+                AutoSize = false,
+                Size = new Size(420, 36),
+                Location = new Point(
+                    (guna2GroupBox7.ClientSize.Width - 420) / 2,
+                    315),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe UI Semibold", 13F),
+                ForeColor = Color.DimGray,
+                Text = "Cargando productos..."
+            };
+            panelCargaProductos.Controls.Add(circuloCargaProductos);
+            panelCargaProductos.Controls.Add(etiquetaCargaProductos);
+            guna2GroupBox7.Controls.Add(panelCargaProductos);
+        }
+
+        private void MostrarCargaProductos(int total)
+        {
+            circuloCargaProductos.Minimum = 0;
+            circuloCargaProductos.Maximum = Math.Max(1, total);
+            circuloCargaProductos.Value = 0;
+            etiquetaCargaProductos.Text = "Cargando productos...";
+            panelCargaProductos.Visible = true;
+            panelCargaProductos.BringToFront();
+            panelCargaProductos.Refresh();
+            Application.DoEvents();
+        }
+
+        private void OcultarCargaProductos()
+        {
+            panelCargaProductos.Visible = false;
         }
 
         private void Cargar_Todos_Productos_Almacen()
@@ -2107,16 +2732,21 @@ namespace CapaPresentacion
         }
         private void txt_buscarAlmacen_TextChanged(object sender, EventArgs e)
         {
-            if (txt_buscarAlmacen.Text.Trim().Length > 3)
+            string valor = txt_buscarAlmacen.Text.Trim();
+            if (valor.Length == 0)
             {
-                Buscar_Producto_Almacen(txt_buscarAlmacen.Text);
+                Cargar_Todos_Productos_Almacen();
+            }
+            else if (valor.Length >= 2)
+            {
+                Buscar_Producto_Almacen(valor);
             }
         }
         private void txt_buscarAlmacen_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Enter)
             {
-                if (txt_buscarAlmacen.Text.Trim().Length > 3)
+                if (txt_buscarAlmacen.Text.Trim().Length >= 2)
                 {
                     Buscar_Producto_Almacen(txt_buscarAlmacen.Text);
                 }
@@ -2310,7 +2940,6 @@ namespace CapaPresentacion
         private void LLenar_Producto_Movimiento(DataTable data)
         {
             lsv_movim.Items.Clear();
-            DateTime FechaCoti;
             double TotalCoti = 0;
             double saldocred = 0;
 
@@ -2322,7 +2951,7 @@ namespace CapaPresentacion
                 lis.SubItems.Add(dr["De_Para"].ToString());
                 lis.SubItems.Add(dr["Fecha_Caja"].ToString());
                 lis.SubItems.Add(dr["Tipo_Caja"].ToString());
-                lis.SubItems.Add(dr["Concepto"].ToString());
+                lis.SubItems.Add(NormalizarTextoMovimiento(dr["Concepto"].ToString()));
                 TotalCoti = Convert.ToDouble(dr["ImporteCaja"]);
                 lis.SubItems.Add(TotalCoti.ToString("###0.00"));
 
@@ -2857,6 +3486,7 @@ namespace CapaPresentacion
             fill.Show();
             caja.ShowDialog(this);
             fill.Hide();
+            ActualizarEncabezadoUsuario();
         }
 
         private void asignarPrivilegiosToolStripMenuItem_Click(object sender, EventArgs e)

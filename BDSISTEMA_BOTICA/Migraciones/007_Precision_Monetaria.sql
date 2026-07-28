@@ -1,0 +1,78 @@
+USE [$(BaseDatos)];
+GO
+
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_WARNINGS ON;
+SET ARITHABORT ON;
+SET NUMERIC_ROUNDABORT OFF;
+GO
+
+SET XACT_ABORT ON;
+
+BEGIN TRY
+    BEGIN TRANSACTION;
+
+    ALTER TABLE dbo.Productos ALTER COLUMN Pre_CompraS DECIMAL(18,4) NOT NULL;
+    ALTER TABLE dbo.Productos ALTER COLUMN Stock_Actual DECIMAL(18,3) NOT NULL;
+    ALTER TABLE dbo.Productos ALTER COLUMN Pre_venta DECIMAL(18,2) NOT NULL;
+    ALTER TABLE dbo.Productos ALTER COLUMN UtilidadUnit DECIMAL(18,4) NULL;
+    ALTER TABLE dbo.Productos ALTER COLUMN Valor_porCant DECIMAL(18,2) NULL;
+    ALTER TABLE dbo.Productos ALTER COLUMN comisionporcen DECIMAL(9,4) NULL;
+
+    ALTER TABLE dbo.Pedido ALTER COLUMN SubTotal DECIMAL(18,2) NULL;
+    ALTER TABLE dbo.Pedido ALTER COLUMN IgvPed DECIMAL(18,2) NULL;
+    ALTER TABLE dbo.Pedido ALTER COLUMN TotalPed DECIMAL(18,2) NULL;
+    ALTER TABLE dbo.Pedido ALTER COLUMN TotalGancia DECIMAL(18,2) NULL;
+    ALTER TABLE dbo.Pedido ALTER COLUMN Total_Dscuento DECIMAL(18,2) NULL;
+
+    ALTER TABLE dbo.Detalle_Pedido ALTER COLUMN Precio DECIMAL(18,2) NULL;
+    ALTER TABLE dbo.Detalle_Pedido ALTER COLUMN Cantidad DECIMAL(18,3) NULL;
+    ALTER TABLE dbo.Detalle_Pedido ALTER COLUMN Importe DECIMAL(18,2) NULL;
+    ALTER TABLE dbo.Detalle_Pedido ALTER COLUMN Utilidad_Unit DECIMAL(18,4) NULL;
+    ALTER TABLE dbo.Detalle_Pedido ALTER COLUMN TotalUtilidad DECIMAL(18,2) NULL;
+    ALTER TABLE dbo.Detalle_Pedido ALTER COLUMN DescuentoDet DECIMAL(18,2) NULL;
+
+    ALTER TABLE dbo.Documento ALTER COLUMN ImporteDoc DECIMAL(18,2) NOT NULL;
+    ALTER TABLE dbo.Documento ALTER COLUMN TotalGanancia DECIMAL(18,2) NULL;
+    ALTER TABLE dbo.Documento ALTER COLUMN TotalDscuento DECIMAL(18,2) NULL;
+
+    ALTER TABLE dbo.DocumentoCompras
+        ALTER COLUMN SubTotal_ingre DECIMAL(18,2) NULL;
+    ALTER TABLE dbo.DocumentoCompras
+        ALTER COLUMN Total_Ingre DECIMAL(18,2) NOT NULL;
+
+    ALTER TABLE dbo.Detalle_DocumCompra
+        ALTER COLUMN PrecioUnit DECIMAL(18,4) NULL;
+    ALTER TABLE dbo.Detalle_DocumCompra
+        ALTER COLUMN Cantidad DECIMAL(18,3) NULL;
+    ALTER TABLE dbo.Detalle_DocumCompra
+        ALTER COLUMN Importe DECIMAL(18,2) NULL;
+    ALTER TABLE dbo.Detalle_DocumCompra
+        ALTER COLUMN preventa DECIMAL(18,2) NULL;
+
+    ALTER TABLE dbo.Caja ALTER COLUMN ImporteCaja DECIMAL(18,2) NULL;
+    ALTER TABLE dbo.Caja ALTER COLUMN TotalUti DECIMAL(18,2) NULL;
+    ALTER TABLE dbo.Caja ALTER COLUMN Total_Dscuentos DECIMAL(18,2) NOT NULL;
+
+    ALTER TABLE dbo.Detalle_Kardex ALTER COLUMN Cantidad_In DECIMAL(18,3) NULL;
+    ALTER TABLE dbo.Detalle_Kardex ALTER COLUMN Precio_In DECIMAL(18,4) NULL;
+    ALTER TABLE dbo.Detalle_Kardex ALTER COLUMN Total_In DECIMAL(18,2) NULL;
+    ALTER TABLE dbo.Detalle_Kardex ALTER COLUMN Cantidad_Out DECIMAL(18,3) NULL;
+    ALTER TABLE dbo.Detalle_Kardex ALTER COLUMN Precio_Out DECIMAL(18,4) NULL;
+    ALTER TABLE dbo.Detalle_Kardex ALTER COLUMN Total_Out DECIMAL(18,2) NULL;
+    ALTER TABLE dbo.Detalle_Kardex ALTER COLUMN Cantidad_Saldo DECIMAL(18,3) NULL;
+    ALTER TABLE dbo.Detalle_Kardex ALTER COLUMN Promedio DECIMAL(18,4) NULL;
+    ALTER TABLE dbo.Detalle_Kardex
+        ALTER COLUMN Costo_Total_Saldo DECIMAL(18,2) NULL;
+    ALTER TABLE dbo.Detalle_Kardex
+        ALTER COLUMN ImportDiferen DECIMAL(18,2) NULL;
+
+    COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+    IF @@TRANCOUNT > 0
+        ROLLBACK TRANSACTION;
+    THROW;
+END CATCH;
+GO

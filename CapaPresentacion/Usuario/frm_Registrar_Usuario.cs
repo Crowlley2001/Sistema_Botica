@@ -6,6 +6,7 @@ using System;
 using System.Data;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace CapaPresentacion.Usuario
@@ -63,7 +64,7 @@ namespace CapaPresentacion.Usuario
                 ListViewItem item = new ListViewItem(row["Id_Usu"].ToString());
                 item.SubItems.Add(row["Nombres"].ToString());
                 item.SubItems.Add(row["Usuario"].ToString());
-                item.SubItems.Add(row["Contraseña"].ToString());
+                item.SubItems.Add("Protegida");
 
                
                 item.SubItems.Add(row["Rol"].ToString());
@@ -102,7 +103,8 @@ namespace CapaPresentacion.Usuario
         private void btn_nuevo_Click(object sender, EventArgs e)
         {
             pnl_nuevo.Visible = true;
-            txt_id.Text = (lsv_usu.Items.Count + 1).ToString();
+            txt_id.Text = new CN_Usuario()
+                .CN_ObtenerSiguienteIdUsuario().ToString();
             txt_nombre.Focus();
             editMode = false;
         }
@@ -142,9 +144,20 @@ namespace CapaPresentacion.Usuario
                 return false;
             }
 
-            if (txt_pass.Text.Trim().Length < 4)
+            if (!editMode && txt_pass.Text.Trim().Length < 8)
             {
-                MessageBox.Show("Ingrese tu clave de Login (mínimo 4 caracteres)");
+                MessageBox.Show("Ingrese una clave de login de al menos 8 caracteres");
+                txt_pass.Focus();
+                return false;
+            }
+
+            if (editMode &&
+                txt_pass.Text.Trim().Length > 0 &&
+                txt_pass.Text.Trim().Length < 8)
+            {
+                MessageBox.Show(
+                    "La nueva clave debe tener al menos 8 caracteres. " +
+                    "Déjela vacía para conservar la clave actual.");
                 txt_pass.Focus();
                 return false;
             }
@@ -185,7 +198,7 @@ namespace CapaPresentacion.Usuario
                 use.Apellidos = txt_apellido.Text;
                 use.Usu = txt_usu.Text;
                 use.Clave = txt_pass.Text;
-                use.Foto = xFotoruta;
+                use.Foto = GuardarFotoUsuario(Convert.ToInt32(txt_id.Text));
                 use.FechaNaci = dtp_fecha.Value.ToString("yyyy-MM-dd");
                 use.Idrol = cbo_rol.SelectedValue.ToString();
                 use.Correo = txt_correo.Text;
@@ -232,7 +245,7 @@ namespace CapaPresentacion.Usuario
                 use.Apellidos = txt_apellido.Text;
                 use.Usu = txt_usu.Text;
                 use.Clave = txt_pass.Text;
-                use.Foto = xFotoruta;
+                use.Foto = GuardarFotoUsuario(Convert.ToInt32(txt_id.Text));
                 use.FechaNaci = dtp_fecha.Value.ToString("yyyy-MM-dd");
                 use.Idrol = cbo_rol.SelectedValue.ToString();
                 use.Correo = txt_correo.Text;
@@ -240,6 +253,13 @@ namespace CapaPresentacion.Usuario
                 obj.Cn_Modificar_Usaurio(use);
                 if (CD_Usuario.saved == true)
                 {
+                    if (use.Idusu == Convert.ToInt32(Cls_ModalCategoria.IdUsu))
+                    {
+                        Cls_ModalCategoria.Nombre = use.Nombres;
+                        Cls_ModalCategoria.Apellido = use.Apellidos;
+                        Cls_ModalCategoria.Foto = use.Foto;
+                    }
+
                     fill.Show();
                     ok.Lbl_msm1.Text = "Usuario Modificado Correctamente";
                     ok.ShowDialog(this);
@@ -291,8 +311,8 @@ namespace CapaPresentacion.Usuario
             }
             catch
             {
-                piclogo.Load(Application.StartupPath + @"\user.png");
-                xFotoruta = Application.StartupPath + @"\user.png";
+                AsignarImagenUsuarioPredeterminada();
+                xFotoruta = string.Empty;
                 MessageBox.Show("Error al cargar la imagen");
             }
         }
@@ -320,7 +340,9 @@ namespace CapaPresentacion.Usuario
                     txt_nombre.Text = Convert.ToString(data.Rows[0]["Nombres"]);
                     txt_apellido.Text = Convert.ToString(data.Rows[0]["Apellidos"]);
                     txt_usu.Text = Convert.ToString(data.Rows[0]["Usuario"]);
-                    txt_pass.Text = Convert.ToString(data.Rows[0]["Contraseña"]);
+                    txt_pass.Clear();
+                    txt_pass.PlaceholderText =
+                        "Vacío = conservar la clave actual";
                     txt_correo.Text = Convert.ToString(data.Rows[0]["Correo"]);
                     cbo_rol.SelectedValue = Convert.ToString(data.Rows[0]["Id_Rol"]);
                     dtp_fecha.Value = Convert.ToDateTime(data.Rows[0]["Fecha_Ncmiento"]);
@@ -329,7 +351,7 @@ namespace CapaPresentacion.Usuario
 
                     if (File.Exists(xFotoruta) == false)
                     {
-                        piclogo.Load(Application.StartupPath + @"\user.png");
+                        AsignarImagenUsuarioPredeterminada();
 
                     }
                     else
@@ -346,6 +368,43 @@ namespace CapaPresentacion.Usuario
             {
                 MessageBox.Show("Error al cargar los datos: " + ex.Message);
             }
+        }
+
+        private void AsignarImagenUsuarioPredeterminada()
+        {
+            piclogo.Image = Properties.Resources.Perfil;
+            piclogo.SizeMode = PictureBoxSizeMode.Zoom;
+        }
+
+        private string GuardarFotoUsuario(int idUsuario)
+        {
+            if (string.IsNullOrWhiteSpace(xFotoruta) || !File.Exists(xFotoruta))
+                return string.Empty;
+
+            string directorio = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "BoticaElicler",
+                "FotosUsuarios");
+            Directory.CreateDirectory(directorio);
+
+            string extension = Path.GetExtension(xFotoruta);
+            if (string.IsNullOrWhiteSpace(extension))
+                extension = ".png";
+
+            string destino = Path.Combine(
+                directorio,
+                "usuario_" + idUsuario + extension.ToLowerInvariant());
+
+            if (!string.Equals(
+                Path.GetFullPath(xFotoruta),
+                Path.GetFullPath(destino),
+                StringComparison.OrdinalIgnoreCase))
+            {
+                File.Copy(xFotoruta, destino, true);
+            }
+
+            xFotoruta = destino;
+            return destino;
         }
 
         private void btn_quitar_Click(object sender, EventArgs e)
@@ -367,6 +426,45 @@ namespace CapaPresentacion.Usuario
 
             var lis = lsv_usu.SelectedItems[0];
             idusu = Convert.ToInt32(lis.SubItems[0].Text);
+
+            int idUsuarioActual = Convert.ToInt32(Cls_ModalCategoria.IdUsu);
+            if (idusu == idUsuarioActual)
+            {
+                fill.Show();
+                ver.lbl_msm.Text =
+                    "No puede eliminar el usuario con el que inició sesión.";
+                ver.ShowDialog(this);
+                fill.Close();
+                return;
+            }
+
+            string rol = lis.SubItems[4].Text.Trim();
+            int administradoresActivos = lsv_usu.Items.Cast<ListViewItem>()
+                .Count(item => string.Equals(
+                    item.SubItems[4].Text.Trim(),
+                    "Administrador",
+                    StringComparison.OrdinalIgnoreCase));
+            if (string.Equals(rol, "Administrador",
+                    StringComparison.OrdinalIgnoreCase) &&
+                administradoresActivos <= 1)
+            {
+                fill.Show();
+                ver.lbl_msm.Text =
+                    "Debe existir al menos un administrador activo.";
+                ver.ShowDialog(this);
+                fill.Close();
+                return;
+            }
+
+            DialogResult confirmar = MessageBox.Show(
+                "El usuario dejará de iniciar sesión, pero se conservará su " +
+                "historial de ventas y auditoría.\n\n¿Desea continuar?",
+                "Dar de baja al usuario",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning,
+                MessageBoxDefaultButton.Button2);
+            if (confirmar != DialogResult.Yes)
+                return;
 
             obj.CN_Eliminar_Usuario(idusu);
 

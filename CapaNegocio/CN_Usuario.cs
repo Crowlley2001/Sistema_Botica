@@ -48,6 +48,12 @@ namespace CapaNegocio
             return objUsuario.CD_Cargar_todos_Usuarios();
         }
 
+        public int CN_ObtenerSiguienteIdUsuario()
+        {
+            CD_Usuario objUsuario = new CD_Usuario();
+            return objUsuario.CD_ObtenerSiguienteIdUsuario();
+        }
+
         public void CN_Registrar_Usuario(Usuarios obj)
         {
             CD_Usuario objUsuario = new CD_Usuario();

@@ -42,10 +42,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Caja.cs" />
+    <Compile Include="CompraCompleta.cs" />
     <Compile Include="Cierre_Caja.cs" />
     <Compile Include="Cliente.cs" />
     <Compile Include="Cotizacion.cs" />
     <Compile Include="Credito.cs" />
+    <Compile Include="CpeElectronico.cs" />
     <Compile Include="Detalle_Credito.cs" />
     <Compile Include="Detalle_DocumentoCompra.cs" />
     <Compile Include="Detalle_Kardex.cs" />
@@ -59,6 +61,7 @@
     <Compile Include="Temporal.cs" />
     <Compile Include="TipoDoc.cs" />
     <Compile Include="Usuarios.cs" />
+    <Compile Include="VentaCompleta.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

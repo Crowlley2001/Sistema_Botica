@@ -28,12 +28,7 @@ namespace MSistemaBotica_C.Utilitarios
 
         private void tocar_timbre()
         {
-            string ruta;
-            ruta = Application.StartupPath;
-            System.Media.SoundPlayer son;
-            son = new System.Media.SoundPlayer(ruta + @"\tono_mensaje_3.wav");
-            son.Play();
-
+            CapaPresentacion.AudioSistema.Reproducir("tono_mensaje_3.wav");
         }
 
 

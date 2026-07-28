@@ -361,7 +361,8 @@
             this.guna2Button2.Padding = new System.Windows.Forms.Padding(10, 0, 0, 0);
             this.guna2Button2.Size = new System.Drawing.Size(186, 34);
             this.guna2Button2.TabIndex = 648;
-            this.guna2Button2.Text = "Consultar a Sunat";
+            this.guna2Button2.Text = "Consultar RUC (Prueba)";
+            this.guna2Button2.Click += new System.EventHandler(this.guna2Button2_Click);
             // 
             // btrn_registrar
             // 

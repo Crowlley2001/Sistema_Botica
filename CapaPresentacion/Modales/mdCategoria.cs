@@ -104,7 +104,7 @@ namespace CapaPresentacion.Modales
                 {
                     txt_catg.Focus(); return;
                 }
-                objCateg.RegistrarCategoria(txt_catg.Text);
+                objCateg.RegistrarCategoria(txt_catg.Text.Trim());
                 Cargar_Categorias();
                 txt_catg.Text = "";
                 pnl_reg.Enabled = false;
@@ -117,7 +117,8 @@ namespace CapaPresentacion.Modales
                     txt_catg.Focus(); return;
                 }
 
-                objCateg.EditarCategoria(Convert.ToInt32(txt_id.Text), txt_catg.Text);
+                objCateg.EditarCategoria(
+                    Convert.ToInt32(txt_id.Text), txt_catg.Text.Trim());
                 Cargar_Categorias();
                 txt_catg.Text = "";
                 txt_id.Text = "";

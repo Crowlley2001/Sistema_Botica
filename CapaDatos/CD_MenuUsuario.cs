@@ -105,7 +105,7 @@ namespace CapaEntidad
                 Cmd = null;
                 Cn.Close();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
           
                 functionReturnValue = false;

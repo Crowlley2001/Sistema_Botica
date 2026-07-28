@@ -182,6 +182,20 @@ namespace CapaDatos
 
         }
 
+        public void CD_CambiarEstadoCliente(string idCliente, string estado)
+        {
+            using (SqlConnection cn = new SqlConnection(conectar()))
+            using (SqlCommand cmd = new SqlCommand("Sp_DarBajar_Cliente", cn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.CommandTimeout = 20;
+                cmd.Parameters.Add("@idcliente", SqlDbType.Char, 10).Value = idCliente;
+                cmd.Parameters.Add("@estado", SqlDbType.VarChar, 15).Value = estado;
+                cn.Open();
+                cmd.ExecuteNonQuery();
+            }
+        }
+
     }
 
 

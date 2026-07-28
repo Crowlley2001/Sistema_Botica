@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -27,8 +28,8 @@ namespace CapaPresentacion.Producto
             LLenarCombo_Categoria();
             BuscarProducto(this.Tag.ToString());
 
-            //         FECHA - ACTUAL         //
-            dtp_fechaVence.Value = DateTime.Now;
+            if (!chk_fechvence.Checked)
+                dtp_fechaVence.Value = DateTime.Now;
         }
         //----------------------------- METODO LLENAR COMBOBOX CATEGORIA-------------------------------//
         private void LLenarCombo_Categoria()
@@ -98,7 +99,10 @@ namespace CapaPresentacion.Producto
 
                 if (System.IO.File.Exists(fotoruta))
                 {
-                    pic_prod.Image = Image.FromFile(fotoruta);
+                    using (Image imagen = Image.FromFile(fotoruta))
+                    {
+                        pic_prod.Image = new Bitmap(imagen);
+                    }
                 }
                 else
                 {
@@ -160,6 +164,7 @@ namespace CapaPresentacion.Producto
 
         //--------------------------------- METODO REGISTRAR PRODUCTO----------------------------------//
         string fotoruta = "";
+        string nuevaFotoSeleccionada = "";
         private void Registrar_Producto()
         {
             CN_Producto obj = new CN_Producto();
@@ -170,7 +175,7 @@ namespace CapaPresentacion.Producto
                 pro.Descripcion = txt_nomprod.Text;
                 pro.PrecioCompra = Convert.ToDouble(txt_precompra.Text);
                 pro.IdCat = Convert.ToInt32(cbo_catg.SelectedValue);
-                pro.Foto = fotoruta;
+                pro.Foto = GuardarFotoEditada();
                 pro.Preventa = Convert.ToDouble(txt_preventa.Text);
                 pro.FormatoCompra = cbo_presentacion.Text;
                 pro.PrincipioActivo = txt_PA.Text;
@@ -191,7 +196,8 @@ namespace CapaPresentacion.Producto
                 {
                     MessageBox.Show("El producto se ha editado correctamente", "Registro de Kardex", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
-                Limpiar();
+                if (CD_Producto.prod_saved == true)
+                    Limpiar();
             }
             catch (Exception ex)
             {
@@ -204,14 +210,15 @@ namespace CapaPresentacion.Producto
         {
             try
             {
-                if (System.IO.File.Exists(fotoruta))
+                openFileDialog1.Filter =
+                    "Imágenes|*.jpg;*.jpeg;*.png;*.bmp;*.gif|Todos los archivos|*.*";
+                if (openFileDialog1.ShowDialog(this) == DialogResult.OK)
                 {
-                    pic_prod.Image = Image.FromFile(fotoruta);
-                    pic_prod.SizeMode = PictureBoxSizeMode.Zoom;
-                }
-                else
-                {
-                    pic_prod.Image = Properties.Resources.Imagen7;
+                    nuevaFotoSeleccionada = openFileDialog1.FileName;
+                    using (Image imagen = Image.FromFile(nuevaFotoSeleccionada))
+                    {
+                        pic_prod.Image = new Bitmap(imagen);
+                    }
                     pic_prod.SizeMode = PictureBoxSizeMode.Zoom;
                 }
             }
@@ -229,6 +236,29 @@ namespace CapaPresentacion.Producto
                     MessageBoxIcon.Exclamation
                 );
             }
+        }
+
+        private string GuardarFotoEditada()
+        {
+            if (string.IsNullOrWhiteSpace(nuevaFotoSeleccionada) ||
+                !File.Exists(nuevaFotoSeleccionada))
+            {
+                return fotoruta;
+            }
+
+            string carpeta = Path.Combine(
+                Application.StartupPath, "ImagenesProductos");
+            Directory.CreateDirectory(carpeta);
+            string extension = Path.GetExtension(nuevaFotoSeleccionada);
+            if (string.IsNullOrWhiteSpace(extension))
+                extension = ".png";
+            string destino = Path.Combine(
+                carpeta,
+                idOriginal.Trim().Replace(":", "_").Replace("/", "_") + extension);
+            File.Copy(nuevaFotoSeleccionada, destino, true);
+            fotoruta = destino;
+            nuevaFotoSeleccionada = "";
+            return destino;
         }
 
         //--------------------------- METODO SELECCIONAR CHECK PARA LA FECHA---------------------------//

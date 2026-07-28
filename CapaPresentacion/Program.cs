@@ -23,6 +23,31 @@ namespace CapaPresentacion
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            DiagnosticoAplicacion.Configurar();
+
+            string problema = VerificadorSistema.Verificar();
+            if (!String.IsNullOrWhiteSpace(problema))
+            {
+                MessageBox.Show(
+                    problema,
+                    "Verificación del sistema",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (VerificadorSistema.EsEntornoPruebas())
+            {
+                MessageBox.Show(
+                    "ENTORNO DE PRUEBAS\n\n" +
+                    "Todas las operaciones se guardarán en " +
+                    "BDSISTEMA_BOTICA_PRUEBA.\n" +
+                    "La base original no será utilizada.",
+                    "Sistema Botica Profesional",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+
             Application.Run(new Login());
         }
     }

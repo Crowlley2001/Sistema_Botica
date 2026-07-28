@@ -1,6 +1,7 @@
 ﻿using CapaDatos;
 using CapaEntidad;
 using CapaNegocio;
+using CapaPresentacion.Usuario;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -15,9 +16,15 @@ namespace CapaPresentacion.Ventas
 {
     public partial class frm_Lista_Clientes : Form
     {
+        public bool RequiereRuc { get; set; }
+        private Guna.UI2.WinForms.Guna2Button btnDesactivarCliente;
+        private Guna.UI2.WinForms.Guna2Button btnEditarCliente;
+
         public frm_Lista_Clientes()
         {
             InitializeComponent();
+            ConstruirBotonesMantenimiento();
+            pnl_newCli.VisibleChanged += pnl_newCli_VisibleChanged;
         }
         //----------------------------- METODO LLAMAR FUNCIONES DESDE INICIO --------------------------------//
         public static string tipo = "";
@@ -120,7 +127,7 @@ namespace CapaPresentacion.Ventas
         {
             CN_Cliente obj_Cliente = new CN_Cliente();
             DataTable dt = new DataTable();
-            dt = obj_Cliente.Vertodos_los_Clientes("Todos");
+            dt = obj_Cliente.Vertodos_los_Clientes("Activo");
             if(dt.Rows.Count > 0)
             {
                 LLenar_Lisview_Producto(dt);
@@ -139,9 +146,14 @@ namespace CapaPresentacion.Ventas
         //----------------------------------- METODO PARA BUSCAR CLIENTE ------------------------------------//
         private void txt_buscar_TextChanged(object sender, EventArgs e)
         {
-            if (txt_buscar.Text.Trim().Length > 2)
+            string valor = txt_buscar.Text.Trim();
+            if (valor.Length == 0)
             {
-                Buscar_Cliente(txt_buscar.Text);
+                Cargar_Todos_LosClientes();
+            }
+            else if (valor.Length >= 2)
+            {
+                Buscar_Cliente(valor);
             }
         }
 
@@ -155,6 +167,9 @@ namespace CapaPresentacion.Ventas
             if (dt.Rows.Count > 0)
             {
                 LLenar_Lisview_Producto(dt);
+                Lsv_Cliente.Items[0].Selected = true;
+                Lsv_Cliente.Items[0].Focused = true;
+                Lsv_Cliente.EnsureVisible(0);
             }
             else
             {
@@ -169,11 +184,20 @@ namespace CapaPresentacion.Ventas
         {
             if(Lsv_Cliente.SelectedIndices.Count == 0)
             {
-
+                MostrarAdvertencia("Seleccione un cliente de la lista.");
             }
             else
             {
                 var lis = Lsv_Cliente.SelectedItems[0];
+                string documento = new string(lis.SubItems[2].Text.Where(char.IsDigit).ToArray());
+                if (RequiereRuc &&
+                    (documento.Length != 11 || !ValidadorDocumentoPeru.EsRucValido(documento)))
+                {
+                    MostrarAdvertencia(
+                        "Para emitir una factura debe elegir o registrar un cliente con RUC válido de 11 dígitos.");
+                    return;
+                }
+
                 lbl_id.Text = lis.SubItems[0].Text;       
                 lbl_nom.Text = lis.SubItems[1].Text;       
                 lbl_ruc.Text = lis.SubItems[2].Text;      
@@ -214,6 +238,46 @@ namespace CapaPresentacion.Ventas
             txt_nombre.Text = "";
             txt_ruc.Text = "";
             txt_direccion.Text = "";
+            bunifuMaterialTextbox1.Text = "";
+            bunifuMaterialTextbox2.Text = "";
+        }
+
+        private void guna2Button2_Click(object sender, EventArgs e)
+        {
+            string ruc = new string(txt_ruc.Text.Where(char.IsDigit).ToArray());
+            if (ruc.Length != 11)
+            {
+                MessageBox.Show(
+                    "La consulta de prueba corresponde únicamente a un RUC de 11 dígitos.",
+                    "Consulta RUC simulada",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                txt_ruc.Focus();
+                return;
+            }
+
+            if (!ValidadorDocumentoPeru.EsRucValido(ruc))
+            {
+                MessageBox.Show(
+                    "El RUC no supera la validación del dígito verificador.",
+                    "Consulta RUC simulada",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                txt_ruc.Focus();
+                return;
+            }
+
+            txt_nombre.Text = "EMPRESA DE PRUEBA " + ruc.Substring(7);
+            txt_direccion.Text = "DIRECCIÓN FISCAL SIMULADA - NO OFICIAL";
+            bunifuMaterialTextbox2.Text = "HABIDO (SIMULADO)";
+            bunifuMaterialTextbox1.Text = "CONTRIBUYENTE DE PRUEBA";
+
+            MessageBox.Show(
+                "Datos generados por el simulador local.\n" +
+                "No se realizó ninguna consulta real a SUNAT.",
+                "Consulta RUC simulada",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
         }
 
 
@@ -225,6 +289,27 @@ namespace CapaPresentacion.Ventas
             if (txt_id.Text.Trim().Length < 2) { filtro.Show(); ver.lbl_msm.Text = "Ingresa o Genera el Id del Cliente"; ver.ShowDialog();filtro.Hide();return false; }
             if (txt_nombre.Text.Trim().Length < 2) { filtro.Show(); ver.lbl_msm.Text = "Ingresa el nombre del Cliente"; ver.ShowDialog(); filtro.Hide();txt_nombre.Focus(); return false; }
             if (txt_ruc.Text.Trim().Length < 2) { filtro.Show(); ver.lbl_msm.Text = "Ingresa el Nro de DNI o RUC del Cliente"; ver.ShowDialog(); filtro.Hide();txt_ruc.Focus(); return false; }
+            string documento = new string(
+                txt_ruc.Text.Where(char.IsDigit).ToArray());
+            if (documento.Length == 11 &&
+                !ValidadorDocumentoPeru.EsRucValido(documento))
+            {
+                filtro.Show();
+                ver.lbl_msm.Text = "El RUC ingresado no es válido.";
+                ver.ShowDialog();
+                filtro.Hide();
+                txt_ruc.Focus();
+                return false;
+            }
+            if (documento.Length != 8 && documento.Length != 11)
+            {
+                filtro.Show();
+                ver.lbl_msm.Text = "Ingrese un DNI de 8 dígitos o un RUC de 11 dígitos.";
+                ver.ShowDialog();
+                filtro.Hide();
+                txt_ruc.Focus();
+                return false;
+            }
             return true;
         }
 
@@ -289,7 +374,7 @@ namespace CapaPresentacion.Ventas
         //------------------------------------- METODO ELEGIR CLIENTE ---------------------------------------//
         private void btn_elegir_Click(object sender, EventArgs e)
         {
-
+            Seleccionar_Cliente();
         }
 
         //------------------------------------ METODO CANCELAR2 CLIENTE -------------------------------------//
@@ -328,6 +413,163 @@ namespace CapaPresentacion.Ventas
             {
                 txt_id.Text = "";
             }
+        }
+
+        private void ConstruirBotonesMantenimiento()
+        {
+            btnEditarCliente = new Guna.UI2.WinForms.Guna2Button
+            {
+                Name = "btnEditarCliente",
+                Text = "Editar",
+                Location = new Point(168, 731),
+                Size = new Size(96, 22),
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+                BorderRadius = 6,
+                BorderThickness = 1,
+                BorderColor = Color.White,
+                FillColor = Color.White,
+                ForeColor = Color.Black,
+                Font = new Font("Segoe UI", 8F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnEditarCliente.Click += btnEditarCliente_Click;
+            Controls.Add(btnEditarCliente);
+            btnEditarCliente.BringToFront();
+
+            btnDesactivarCliente = new Guna.UI2.WinForms.Guna2Button
+            {
+                Name = "btnDesactivarCliente",
+                Text = "Desactivar",
+                Location = new Point(276, 731),
+                Size = new Size(96, 22),
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+                BorderRadius = 6,
+                BorderThickness = 1,
+                BorderColor = Color.White,
+                FillColor = Color.White,
+                ForeColor = Color.Black,
+                Font = new Font("Segoe UI", 8F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnDesactivarCliente.Click += btnDesactivarCliente_Click;
+            Controls.Add(btnDesactivarCliente);
+            btnDesactivarCliente.BringToFront();
+
+            // Centrado dentro del panel de registro.
+            guna2Button2.Location = new Point(
+                (pnl_newCli.ClientSize.Width - guna2Button2.Width) / 2,
+                guna2Button2.Location.Y);
+            guna2Button2.Text = "Consultar RUC";
+        }
+
+        private void pnl_newCli_VisibleChanged(object sender, EventArgs e)
+        {
+            bool mostrarMantenimiento = !pnl_newCli.Visible;
+            btnEditarCliente.Visible = mostrarMantenimiento;
+            btnDesactivarCliente.Visible = mostrarMantenimiento;
+
+            if (pnl_newCli.Visible)
+                pnl_newCli.BringToFront();
+        }
+
+        private void btnEditarCliente_Click(object sender, EventArgs e)
+        {
+            if (Lsv_Cliente.SelectedItems.Count == 0)
+            {
+                MostrarAdvertencia("Seleccione el cliente que desea editar.");
+                return;
+            }
+
+            string idCliente = Lsv_Cliente.SelectedItems[0].SubItems[0].Text.Trim();
+            frm_Editar_Cliente editar = new frm_Editar_Cliente
+            {
+                idcliente = idCliente
+            };
+
+            Filtro filtro = new Filtro();
+            filtro.Show();
+            editar.ShowDialog(this);
+            filtro.Hide();
+
+            if (editar.Tag != null && editar.Tag.ToString() == "A")
+            {
+                Cargar_Todos_LosClientes();
+                SeleccionarClientePorId(idCliente);
+            }
+        }
+
+        private void btnDesactivarCliente_Click(object sender, EventArgs e)
+        {
+            if (Lsv_Cliente.SelectedItems.Count == 0)
+            {
+                MostrarAdvertencia("Seleccione el cliente que desea desactivar.");
+                return;
+            }
+
+            ListViewItem seleccionado = Lsv_Cliente.SelectedItems[0];
+            string idCliente = seleccionado.SubItems[0].Text.Trim();
+            string nombreCliente = seleccionado.SubItems[1].Text.Trim();
+
+            if (idCliente.Equals("C01", StringComparison.OrdinalIgnoreCase))
+            {
+                MostrarAdvertencia(
+                    "El cliente predeterminado para venta al público no se puede desactivar.");
+                return;
+            }
+
+            Filtro filtro = new Filtro();
+            frm_Si_No confirmar = new frm_Si_No();
+            filtro.Show();
+            confirmar.lbl_msm.Text =
+                "¿Desea desactivar al cliente " + nombreCliente + "?\n\n" +
+                "Sus ventas anteriores se conservarán.";
+            confirmar.ShowDialog(this);
+            filtro.Hide();
+
+            if (confirmar.Tag == null || confirmar.Tag.ToString() != "Si")
+                return;
+
+            try
+            {
+                new CN_Cliente().DarBajaCliente(idCliente);
+                Cargar_Todos_LosClientes();
+
+                Filtro filtroOk = new Filtro();
+                frm_Msm_bueno ok = new frm_Msm_bueno();
+                filtroOk.Show();
+                ok.Lbl_msm1.Text = "El cliente fue desactivado correctamente.";
+                ok.ShowDialog(this);
+                filtroOk.Hide();
+            }
+            catch (Exception ex)
+            {
+                MostrarAdvertencia("No se pudo desactivar el cliente: " + ex.Message);
+            }
+        }
+
+        private void SeleccionarClientePorId(string idCliente)
+        {
+            foreach (ListViewItem item in Lsv_Cliente.Items)
+            {
+                if (item.SubItems[0].Text.Trim()
+                    .Equals(idCliente, StringComparison.OrdinalIgnoreCase))
+                {
+                    item.Selected = true;
+                    item.Focused = true;
+                    item.EnsureVisible();
+                    return;
+                }
+            }
+        }
+
+        private void MostrarAdvertencia(string mensaje)
+        {
+            Filtro filtro = new Filtro();
+            frm_Advertencia advertencia = new frm_Advertencia();
+            filtro.Show();
+            advertencia.lbl_msm.Text = mensaje;
+            advertencia.ShowDialog(this);
+            filtro.Hide();
         }
 
     }

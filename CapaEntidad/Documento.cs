@@ -19,6 +19,10 @@ namespace CapaEntidad
         private double _TotalGanancia;
         private double _TotalDscuento;
         private string _Estado_Doc;
+        private string _CodigoMoneda = "PEN";
+        private decimal _TipoCambio = 1m;
+        private decimal _ImporteMoneda;
+        private decimal _ImporteSoles;
 
         public string Id_Doc { get => _id_Doc; set => _id_Doc = value; }
         public string Id_Ped { get => _id_Ped; set => _id_Ped = value; }
@@ -31,5 +35,9 @@ namespace CapaEntidad
         public double TotalGanancia { get => _TotalGanancia; set => _TotalGanancia = value; }
         public double TotalDscuento { get => _TotalDscuento; set => _TotalDscuento = value; }
         public string Estado_Doc { get => _Estado_Doc; set => _Estado_Doc = value; }
+        public string CodigoMoneda { get => _CodigoMoneda; set => _CodigoMoneda = value; }
+        public decimal TipoCambio { get => _TipoCambio; set => _TipoCambio = value; }
+        public decimal ImporteMoneda { get => _ImporteMoneda; set => _ImporteMoneda = value; }
+        public decimal ImporteSoles { get => _ImporteSoles; set => _ImporteSoles = value; }
     }
 }

@@ -13,15 +13,22 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Guna.UI2.WinForms;
 using ThoughtWorks.QRCode.Codec.Util;
 
 namespace CapaPresentacion.Compras
 {
     public partial class frm_EntradasProd : Form
     {
+        private Guna2ComboBox cbo_monedaCompra;
+        private Label lbl_tipoCambioCompra;
+        private string codigoMonedaCompra = "PEN";
+        private decimal tipoCambioCompra = 1m;
+
         public frm_EntradasProd()
         {
             InitializeComponent();
+            InicializarMonedaCompra();
         }
         private void frm_EntradasProd_Load(object sender, EventArgs e)
         {
@@ -31,6 +38,151 @@ namespace CapaPresentacion.Compras
             //         FECHA - ACTUAL         //
             dtp_FechaCom.Value = DateTime.Now;
             dtp_FechaVenc.Value = DateTime.Now;
+        }
+
+        private void InicializarMonedaCompra()
+        {
+            Label etiqueta = new Label
+            {
+                AutoSize = true,
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+                ForeColor = System.Drawing.Color.DimGray,
+                Location = new Point(800, 126),
+                Text = "Moneda / tipo de cambio"
+            };
+
+            cbo_monedaCompra = new Guna2ComboBox
+            {
+                BorderColor = System.Drawing.Color.FromArgb(78, 151, 191),
+                BorderRadius = 6,
+                DrawMode = DrawMode.OwnerDrawFixed,
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new Font("Segoe UI", 9F),
+                ForeColor = System.Drawing.Color.DimGray,
+                ItemHeight = 30,
+                Location = new Point(800, 148),
+                Size = new Size(140, 36)
+            };
+            cbo_monedaCompra.Items.AddRange(
+                new object[] { "PEN - Soles", "USD - Dólares" });
+            cbo_monedaCompra.SelectedIndexChanged +=
+                cbo_monedaCompra_SelectedIndexChanged;
+
+            lbl_tipoCambioCompra = new Label
+            {
+                AutoSize = true,
+                Font = new Font("Segoe UI", 8F),
+                ForeColor = System.Drawing.Color.DimGray,
+                Location = new Point(800, 190),
+                Text = "Importes en soles"
+            };
+
+            guna2GroupBox3.Controls.Add(etiqueta);
+            guna2GroupBox3.Controls.Add(cbo_monedaCompra);
+            guna2GroupBox3.Controls.Add(lbl_tipoCambioCompra);
+            cbo_monedaCompra.BringToFront();
+            lbl_tipoCambioCompra.BringToFront();
+
+            dtp_FechaCom.ValueChanged += dtp_FechaCom_ValueChanged_Moneda;
+            cbo_monedaCompra.SelectedIndex = 0;
+        }
+
+        private void cbo_monedaCompra_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            string monedaAnterior = codigoMonedaCompra;
+            decimal cambioAnterior = tipoCambioCompra;
+            string nuevaMoneda = "PEN";
+            decimal nuevoCambio = 1m;
+
+            if (cbo_monedaCompra.SelectedIndex == 1)
+            {
+                DataTable cambio = CN_TipoCambio.CN_Buscar_TipoCambio_Fecha(
+                    dtp_FechaCom.Value.Date);
+
+                decimal compra;
+                if (cambio == null ||
+                    cambio.Rows.Count == 0 ||
+                    !decimal.TryParse(
+                        Convert.ToString(cambio.Rows[0]["Compra"]), out compra) ||
+                    compra <= 0)
+                {
+                    MessageBox.Show(
+                        "No existe un tipo de cambio de compra válido para la fecha seleccionada.",
+                        "Moneda de la compra",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    cbo_monedaCompra.SelectedIndex = 0;
+                    return;
+                }
+
+                nuevaMoneda = "USD";
+                nuevoCambio = compra;
+            }
+
+            ConvertirDetalleMoneda(
+                monedaAnterior,
+                cambioAnterior,
+                nuevaMoneda,
+                nuevoCambio);
+
+            codigoMonedaCompra = nuevaMoneda;
+            tipoCambioCompra = nuevoCambio;
+            label5.Text = label7.Text = label8.Text =
+                codigoMonedaCompra == "USD" ? "$" : "S/.";
+            lbl_tipoCambioCompra.Text = codigoMonedaCompra == "USD"
+                ? "T.C. compra: " + tipoCambioCompra.ToString("0.000")
+                : "Importes en soles";
+            Calcular();
+        }
+
+        private void dtp_FechaCom_ValueChanged_Moneda(object sender, EventArgs e)
+        {
+            if (cbo_monedaCompra != null &&
+                cbo_monedaCompra.SelectedIndex == 1)
+            {
+                cbo_monedaCompra_SelectedIndexChanged(sender, e);
+            }
+        }
+
+        private void ConvertirDetalleMoneda(
+            string monedaOrigen,
+            decimal cambioOrigen,
+            string monedaDestino,
+            decimal cambioDestino)
+        {
+            if (monedaOrigen == monedaDestino &&
+                cambioOrigen == cambioDestino)
+                return;
+
+            foreach (ListViewItem item in lsv_Det.Items)
+            {
+                ConvertirCeldaMoneda(
+                    item.SubItems[3], monedaOrigen, cambioOrigen,
+                    monedaDestino, cambioDestino);
+                ConvertirCeldaMoneda(
+                    item.SubItems[5], monedaOrigen, cambioOrigen,
+                    monedaDestino, cambioDestino);
+            }
+        }
+
+        private static void ConvertirCeldaMoneda(
+            ListViewItem.ListViewSubItem celda,
+            string monedaOrigen,
+            decimal cambioOrigen,
+            string monedaDestino,
+            decimal cambioDestino)
+        {
+            decimal valor;
+            if (!decimal.TryParse(celda.Text, out valor))
+                return;
+
+            decimal valorSoles = monedaOrigen == "USD"
+                ? valor * cambioOrigen
+                : valor;
+            decimal convertido = monedaDestino == "USD"
+                ? valorSoles / cambioDestino
+                : valorSoles;
+            celda.Text = Math.Round(convertido, 2).ToString("0.00");
         }
      
         private void Configurar_listView()
@@ -111,7 +263,7 @@ namespace CapaPresentacion.Compras
             }
             //calcular el IGV: IVA
             xsubtotal = xtotal / 1.18;
-            xigv = xsubtotal * 0.18;
+            xigv = xtotal - xsubtotal;
 
             txt_subtotal.Text = xsubtotal.ToString("###0.00");
             txt_igv.Text = xigv.ToString("###0.00");
@@ -159,7 +311,6 @@ namespace CapaPresentacion.Compras
                     );
 
                     txt_Frank.Text = CN_TipoDoc.CN_Generar_NroCorrelativo(9);
-                    txt_NroFisico.Text = CN_TipoDoc.CN_Generar_NroCorrelativo(9);
                 }
             }
         }
@@ -169,6 +320,14 @@ namespace CapaPresentacion.Compras
         {
             try
             {
+                if (codigoMonedaCompra == "USD" && tipoCambioCompra > 0)
+                {
+                    xprecio = Convert.ToDouble(
+                        Math.Round(Convert.ToDecimal(xprecio) / tipoCambioCompra, 2));
+                    preventa = Convert.ToDouble(
+                        Math.Round(Convert.ToDecimal(preventa) / tipoCambioCompra, 2));
+                }
+
                 if (lsv_Det.Items.Count == 0)
                 {
                     ListViewItem item = new ListViewItem();
@@ -256,7 +415,6 @@ namespace CapaPresentacion.Compras
 
                     // Generar correlativos
                     txt_Frank.Text = CN_TipoDoc.CN_Generar_NroCorrelativo(9);
-                    txt_NroFisico.Text = CN_TipoDoc.CN_Generar_NroCorrelativo(9);
                 }
             }
         }
@@ -385,7 +543,31 @@ namespace CapaPresentacion.Compras
             if (lsv_Det.Items.Count == 0) { fil.Show(); MessageBox.Show("INgresa Almenos un Producto", "Advertencia", MessageBoxButtons.OK, MessageBoxIcon.Exclamation); fil.Hide(); lsv_Det.Focus(); return false; }
             // if (cbo_provee.SelectedIndex == -1) { fil.Show(); MessageBox.Show("INgresa Almenos un Proveedor", "Advertencia", MessageBoxButtons.OK, MessageBoxIcon.Exclamation); fil.Hide(); cbo_provee.Focus(); return false; }
             if (txt_NroFisico.Text.Trim().Length < 2) { fil.Show(); MessageBox.Show("INgresa el Nro de FActura Fisica", "Advertencia", MessageBoxButtons.OK, MessageBoxIcon.Exclamation); fil.Hide(); txt_NroFisico.Focus(); return false; }
+            if (CN_Compra.CN_Existe_NroFactura_Fisica(txt_NroFisico.Text.Trim()))
+            {
+                fil.Show();
+                MessageBox.Show(
+                    "El número de comprobante del proveedor ya fue registrado.",
+                    "Compra duplicada",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                fil.Hide();
+                txt_NroFisico.Focus();
+                return false;
+            }
             if (txt_procedencia.Text.Trim().Length == 0) { fil.Show(); MessageBox.Show("POr Favor, ingresa la Procedencia de la Mercaderia, Ayudará a tener un mejor control", "Advertencia", MessageBoxButtons.OK, MessageBoxIcon.Exclamation); fil.Hide(); txt_procedencia.Focus(); return false; }
+            if (dtp_FechaVenc.Value.Date < dtp_FechaCom.Value.Date)
+            {
+                fil.Show();
+                MessageBox.Show(
+                    "La fecha de vencimiento no puede ser anterior a la fecha de compra.",
+                    "Fecha inválida",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                fil.Hide();
+                dtp_FechaVenc.Focus();
+                return false;
+            }
 
             // if (cbo_tipoPago.SelectedIndex == -1) { fil.Show(); MessageBox.Show("Selecciona el Tipo de Pago", "Advertencia", MessageBoxButtons.OK, MessageBoxIcon.Exclamation); fil.Hide(); cbo_tipoPago.Focus(); return false; }
             if (cbo_tipoDoc.SelectedIndex == -1) { fil.Show(); MessageBox.Show("Selecciona el Tipo de documento", "Advertencia", MessageBoxButtons.OK, MessageBoxIcon.Exclamation); fil.Hide(); cbo_tipoDoc.Focus(); return false; }
@@ -398,94 +580,72 @@ namespace CapaPresentacion.Compras
 
         private void Registrar_Compra()
         {
-
-            Documento_Compras com = new Documento_Compras();
-            Detalle_DocumentoCompra det = new Detalle_DocumentoCompra();
-            CN_Compra obj = new CN_Compra();
-            CN_Producto pro = new CN_Producto();
-
-            string prodNom = "";
-            string idProd1 = "";
-            Double canti2 = 0;
-            double precompra2 = 0;
-            double preventa2 = 0;
-
             try
             {
-                com.Id_DocComp = txt_Frank.Text;
-                com.NroFac_Fisico = txt_NroFisico.Text;
-                com.SubTotal_ingre = Convert.ToDouble(txt_subtotal.Text);
-                com.Total_Ingre = Convert.ToDouble(txt_TotalPagar.Text);
-                com.Fecha_Ingre = dtp_FechaCom.Value;
-                com.id_Usu = Convert.ToInt32(Cls_ModalCategoria.IdUsu);
-                com.ModalidadPago = cbo_TipoPago.Text;
-                com.TiempoEspera = 0;
-                com.Fecha_Vencimiento = dtp_FechaVenc.Value;
-                com.Estado_Ingre = "Activo";
-                com.Datos_Adicional = txt_obser.Text;
-                com.TipoDoc_Compra = cbo_tipoDoc.Text;
-                com.Tiporegistro = cbo_tipo.Text;
-                com.LugarSalida = txt_procedencia.Text; 
-                com.TipoProceso = "Entrada";
-
-                obj.CN_Registrar_Compras(com);
-
-                if (CD_Compra.saved == true)
+                CompraCompleta compra = new CompraCompleta
                 {
-                    CN_TipoDoc.CN_Actualizar_Correlativo(9);
+                    NroFacturaFisica = txt_NroFisico.Text.Trim(),
+                    SubTotalSoles = Convert.ToDecimal(txt_subtotal.Text) *
+                        tipoCambioCompra,
+                    TotalSoles = Convert.ToDecimal(txt_TotalPagar.Text) *
+                        tipoCambioCompra,
+                    FechaIngreso = dtp_FechaCom.Value,
+                    IdUsuario = Convert.ToInt32(Cls_ModalCategoria.IdUsu),
+                    ModalidadPago = cbo_TipoPago.Text,
+                    TiempoEspera = 0,
+                    FechaVencimiento = dtp_FechaVenc.Value,
+                    DatosAdicionales = txt_obser.Text,
+                    TipoDocumentoCompra = cbo_tipoDoc.Text,
+                    TipoRegistro = cbo_tipo.Text,
+                    LugarSalida = txt_procedencia.Text,
+                    TipoProceso = "Entrada",
+                    CodigoMoneda = codigoMonedaCompra,
+                    TipoCambio = tipoCambioCompra,
+                    TotalMoneda = Convert.ToDecimal(txt_TotalPagar.Text)
+                };
 
-                    //vamos a guardar el Detalle:
-                    for (int i = 0; i < lsv_Det.Items.Count; i++)
+                foreach (ListViewItem item in lsv_Det.Items)
+                {
+                    compra.Detalles.Add(new Detalle_DocumentoCompra
                     {
-                        var item = lsv_Det.Items[i];
-
-                        det.Id_DocComp = txt_Frank.Text;
-                        det.Id_Pro = item.SubItems[0].Text;
-                        idProd1 = item.SubItems[0].Text;
-                        prodNom = Convert.ToString(item.SubItems[1].Text);
-                        det.Cantidad = Convert.ToDouble(item.SubItems[2].Text);
-                        canti2 = Convert.ToDouble(item.SubItems[2].Text);
-                        det.PrecioUnit = Convert.ToDouble(item.SubItems[3].Text);
-                        precompra2 = Convert.ToDouble(item.SubItems[3].Text);
-                        det.Importe = Convert.ToDouble(item.SubItems[4].Text);
-                        det.Preventa = Convert.ToDouble(item.SubItems[5].Text);
-                        preventa2 = Convert.ToDouble(item.SubItems[5].Text);
-
-                        obj.CN_Registrar_Detalle_Compras(det);
-
-                        //ahora actualizamos el precio del producvto:
-                        double utilidad = 0;
-                        double valorAlmacen = 0;
-                        utilidad = preventa2 - precompra2;
-                        valorAlmacen = det.Cantidad * precompra2;
-                        pro.CN_Actualizar_PrecioCompra_Producto(idProd1, precompra2, preventa2, utilidad, valorAlmacen);
-                        Registrar_MoviemtoKardex(idProd1.Trim(), canti2, precompra2, prodNom);
-
-                    }
-
-                    //temrinar,os:
-                    Filtro fil = new Filtro();
-                    frm_Msm_bueno ok = new frm_Msm_bueno();
-
-
-                    fil.Show();
-                    ok.Lbl_msm1.Text = "Los Datos dela Compra se han Registrado Exitosamente";
-                    ok.ShowDialog(this);
-                    fil.Hide();
-
-                    lsv_Det.Items.Clear();
-                    txt_NroFisico.Text = "";
-                    cbo_tipoDoc.Text = "";
-
-
-                    this.Tag = "A";
-                    this.Close();
-
+                        Id_Pro = item.SubItems[0].Text.Trim(),
+                        Cantidad = Convert.ToDouble(item.SubItems[2].Text),
+                        PrecioUnit = Convert.ToDouble(
+                            Convert.ToDecimal(item.SubItems[3].Text) *
+                            tipoCambioCompra),
+                        Importe = Convert.ToDouble(
+                            Convert.ToDecimal(item.SubItems[4].Text) *
+                            tipoCambioCompra),
+                        Preventa = Convert.ToDouble(
+                            Convert.ToDecimal(item.SubItems[5].Text) *
+                            tipoCambioCompra)
+                    });
                 }
+
+                string idCompra = new CN_CompraCompleta().Registrar(compra);
+                txt_Frank.Text = idCompra;
+
+                Filtro fil = new Filtro();
+                frm_Msm_bueno ok = new frm_Msm_bueno();
+                fil.Show();
+                ok.Lbl_msm1.Text =
+                    "La compra " + idCompra + " se registró correctamente";
+                ok.ShowDialog(this);
+                fil.Hide();
+
+                lsv_Det.Items.Clear();
+                txt_NroFisico.Text = "";
+                cbo_tipoDoc.Text = "";
+                Tag = "A";
+                Close();
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error: " + ex.Message);
+                MessageBox.Show(
+                    "No se pudo registrar la compra.\n\n" + ex.Message,
+                    "Compra no registrada",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
 
         }

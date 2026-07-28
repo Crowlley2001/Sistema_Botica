@@ -83,7 +83,6 @@ namespace CapaPresentacion.Producto
             double preventa = 0;
             double precompra = 0;
             double valoralmacen = 0;
-            double frank = 0;
             double utili = 0;
             double xstock = 0;
             for (int i = 0; i < data.Rows.Count; i++) 
@@ -190,10 +189,14 @@ namespace CapaPresentacion.Producto
         //---------------------------------------- METODO BUSCAR PRODUCTO -----------------------------------------//
         private void txt_buscar_TextChanged(object sender, EventArgs e)
         {
-            if (txt_buscar.Text.Trim().Length > 2)
+            string valor = txt_buscar.Text.Trim();
+            if (valor.Length == 0)
             {
-                Buscar_ProductoID(txt_buscar.Text);
-                
+                Mostrar_Producto();
+            }
+            else if (valor.Length >= 2)
+            {
+                Buscar_ProductoID(valor);
             }
         }
 
@@ -263,7 +266,7 @@ namespace CapaPresentacion.Producto
         {
             if(e.KeyCode == Keys.Enter) 
             {
-                if (txt_buscar.Text.Trim().Length > 2)
+                if (txt_buscar.Text.Trim().Length >= 2)
                 {
                     Buscar_ProductoID(txt_buscar.Text);
                     if (lsv_prod.Items.Count > 0)

@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -21,11 +22,14 @@ namespace CapaPresentacion.Producto
         public frm_Menu_Kardex()
         {
             InitializeComponent();
+            ConfigurarPanelTotales();
         }
 
         private void Menu_Producto_Load(object sender, EventArgs e)
         {
-            dtp_fechaKardex.Value = dtp_hoy.Value;
+            DateTime hoy = DateTime.Today;
+            dtp_fechaKardex.Value = hoy;
+            dtp_hoy.Value = hoy;
             if (directo.Trim() == "desde")
             {
                 Configura_ListView();
@@ -33,12 +37,10 @@ namespace CapaPresentacion.Producto
             }
             else
             {
+                chk_mostrar_todo.Checked = true;
                 Configura_ListView();
+                Buscar_Kardex_delDia(hoy);
             }
-
-            //         FECHA - ACTUAL         //
-            dtp_fechaKardex.Value = DateTime.Now;
-            dtp_hoy.Value = DateTime.Now;
         }
         //----------- METODO PARA MOVERFORMULARIO DESDE EL CLS_MODALCATEGORIA LLAMADO----------//
         private void pnl_titu_MouseMove(object sender, MouseEventArgs e)
@@ -95,17 +97,17 @@ namespace CapaPresentacion.Producto
                 item.SubItems.Add(dr[2].ToString());
                 item.SubItems.Add(dr[3].ToString());
                 item.SubItems.Add(dr[4].ToString());
-                item.SubItems.Add(dr[5].ToString());
-                item.SubItems.Add(dr[6].ToString());
-                item.SubItems.Add(dr[9].ToString());
-                item.SubItems.Add(dr[12].ToString());
+                item.SubItems.Add(NormalizarDetalleMovimiento(dr[5].ToString()));
+                item.SubItems.Add(FormatearNumeroKardex(dr[6]));
+                item.SubItems.Add(FormatearNumeroKardex(dr[9]));
+                item.SubItems.Add(FormatearNumeroKardex(dr[12]));
                 item.SubItems.Add(dr[18].ToString());
                 item.SubItems.Add(dr[15].ToString());
 
                 if (chk_mostrar_todo.Checked == true)
                 {
                     item.SubItems.Add(dr["Cant_Difncial"].ToString());
-                    item.SubItems.Add(dr["ImportDiferen"].ToString());
+                    item.SubItems.Add(FormatearNumeroKardex(dr["ImportDiferen"]));
                   
                 }
                 else
@@ -138,10 +140,8 @@ namespace CapaPresentacion.Producto
 
         private void Calcular_Totales()
         {
-            int cont = 1;
-            double cant = 0;
-            double importPosito = 0;
-            double importNegativo = 0;
+            decimal totalEntradas = 0m;
+            decimal totalSalidas = 0m;
 
             try
             {
@@ -155,39 +155,20 @@ namespace CapaPresentacion.Producto
 
                 for (int i = 0; i < lsv_prod.Items.Count; i++)
                 {
-                    // 🔹 Validar que existan las columnas necesarias
-                    if (lsv_prod.Items[i].SubItems.Count <= 11)
+                    // Entradas y Salidas ocupan las posiciones 5 y 6.
+                    if (lsv_prod.Items[i].SubItems.Count <= 6)
                         continue;
 
-                    string txtCant = lsv_prod.Items[i].SubItems[10].Text.Trim();
-                    string txtImporte = lsv_prod.Items[i].SubItems[11].Text.Trim();
-
-                    // 🔹 Validar que no estén vacíos
-                    if (string.IsNullOrEmpty(txtCant) || string.IsNullOrEmpty(txtImporte))
-                        continue;
-
-                    // 🔹 Validar conversión segura
-                    if (!double.TryParse(txtCant, out cant))
-                        continue;
-
-                    double importe = 0;
-                    if (!double.TryParse(txtImporte, out importe))
-                        continue;
-
-                    if (cant > 0)
-                    {
-                        importPosito += importe;
-                    }
-                    else
-                    {
-                        importNegativo += importe;
-                    }
-
-                    cont += 1;
+                    totalEntradas += ConvertirDecimalSeguro(
+                        lsv_prod.Items[i].SubItems[5].Text);
+                    totalSalidas += ConvertirDecimalSeguro(
+                        lsv_prod.Items[i].SubItems[6].Text);
                 }
 
-                txt_totalnegativo.Text = importNegativo.ToString("###0.00");
-                txt_totalpositivo.Text = importPosito.ToString("###0.00");
+                txt_totalpositivo.Text = totalEntradas.ToString("N3");
+                txt_totalnegativo.Text = totalSalidas.ToString("N3");
+                label5.Text = "Total entradas";
+                label4.Text = "Total salidas";
 
                 group_totales.Visible = true;
                 btn_save.Visible = true;
@@ -197,6 +178,65 @@ namespace CapaPresentacion.Producto
                 MessageBox.Show("Error al calcular totales: " + ex.Message,
                     "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        private static decimal ConvertirDecimalSeguro(string texto)
+        {
+            decimal valor;
+            if (decimal.TryParse(texto, NumberStyles.Number,
+                CultureInfo.CurrentCulture, out valor))
+                return valor;
+
+            if (decimal.TryParse(texto, NumberStyles.Number,
+                CultureInfo.InvariantCulture, out valor))
+                return valor;
+
+            return 0m;
+        }
+
+        private static string FormatearNumeroKardex(object valor)
+        {
+            if (valor == null || valor == DBNull.Value)
+                return "0.000";
+
+            decimal numero;
+            string texto = Convert.ToString(valor);
+            if (decimal.TryParse(texto, NumberStyles.Any,
+                    CultureInfo.CurrentCulture, out numero) ||
+                decimal.TryParse(texto, NumberStyles.Any,
+                    CultureInfo.InvariantCulture, out numero))
+            {
+                return numero.ToString("N3");
+            }
+
+            return texto;
+        }
+
+        private void ConfigurarPanelTotales()
+        {
+            group_totales.AutoScroll = false;
+
+            txt_totalpositivo.Location = new Point(12, 36);
+            txt_totalpositivo.Size = new Size(122, 27);
+            txt_totalpositivo.TextAlign = HorizontalAlignment.Center;
+            txt_totalpositivo.ReadOnly = true;
+            txt_totalpositivo.Cursor = Cursors.Default;
+
+            txt_totalnegativo.Location = new Point(149, 36);
+            txt_totalnegativo.Size = new Size(122, 27);
+            txt_totalnegativo.TextAlign = HorizontalAlignment.Center;
+            txt_totalnegativo.ReadOnly = true;
+            txt_totalnegativo.Cursor = Cursors.Default;
+
+            label5.AutoSize = false;
+            label5.Location = new Point(12, 19);
+            label5.Size = new Size(122, 17);
+            label5.TextAlign = ContentAlignment.MiddleCenter;
+
+            label4.AutoSize = false;
+            label4.Location = new Point(149, 19);
+            label4.Size = new Size(122, 17);
+            label4.TextAlign = ContentAlignment.MiddleCenter;
         }
 
 
@@ -213,6 +253,9 @@ namespace CapaPresentacion.Producto
             {
                 pnl_resul.Visible = true;
                 lsv_prod.Items.Clear();
+                lbl_TotalItem.Text = "0";
+                txt_totalpositivo.Text = "0.00";
+                txt_totalnegativo.Text = "0.00";
             }
         }
 
@@ -255,9 +298,14 @@ namespace CapaPresentacion.Producto
         //------------------------ EVENTO TEXTCHANGED DEL TEXBOX BUSCAR------------------------//
         private void txt_buscar_TextChanged_1(object sender, EventArgs e)
         {
-            if (txt_buscar.Text.Trim().Length > 2)
+            string valor = txt_buscar.Text.Trim();
+            if (valor.Length == 0)
             {
-                Buscar_Movmiento_de_ProductoID(txt_buscar.Text);
+                Buscar_Kardex_delDia(dtp_fechaKardex.Value.Date);
+            }
+            else if (valor.Length >= 2)
+            {
+                Buscar_Movmiento_de_ProductoID(valor);
             }
         }
 
@@ -275,7 +323,16 @@ namespace CapaPresentacion.Producto
 
         private void dtp_fechaKardex_ValueChanged(object sender, EventArgs e)
         {
-            Buscar_Kardex_delDia(dtp_fechaKardex.Value = DateTime.Now);
+            Buscar_Kardex_delDia(dtp_fechaKardex.Value.Date);
+        }
+
+        private static string NormalizarDetalleMovimiento(string texto)
+        {
+            string valor = (texto ?? string.Empty).Trim();
+            if (valor.IndexOf("Venta al", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                valor.IndexOf("blico", StringComparison.OrdinalIgnoreCase) >= 0)
+                return "Venta al Público";
+            return valor;
         }
 
 

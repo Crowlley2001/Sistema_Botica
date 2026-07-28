@@ -11,6 +11,18 @@ namespace CapaNegocio
 {
     public class CN_Producto
     {
+        public string ObtenerSiguienteIdProducto()
+        {
+            return new CD_Producto().CD_ObtenerSiguienteIdProducto();
+        }
+
+        public bool ExisteIdProducto(string idProducto)
+        {
+            if (string.IsNullOrWhiteSpace(idProducto))
+                return false;
+            return new CD_Producto().CD_ExisteIdProducto(idProducto);
+        }
+
         //----------------------------- METODO REGISTRAR PRODUCTO-------------------------------//
         public void RegistrarProducto(Producto objProd)
         {

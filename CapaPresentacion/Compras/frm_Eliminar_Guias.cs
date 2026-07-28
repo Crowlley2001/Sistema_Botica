@@ -130,7 +130,7 @@ namespace CapaPresentacion.Compras
             }
             //calcular el IGV: IVA
             xsubtotal = xtotal / 1.18;
-            xigv = xsubtotal * 0.18;
+            xigv = xtotal - xsubtotal;
 
             txt_subtotalCompra.Text = xsubtotal.ToString("###0.00");
             txt_igvCompra.Text = xigv.ToString("###0.00");

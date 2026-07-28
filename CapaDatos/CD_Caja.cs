@@ -38,6 +38,16 @@ namespace CapaDatos
                     cmd.Parameters.AddWithValue("@TipoPago", cja.TipoPago);
                     cmd.Parameters.AddWithValue("@GeneradoPor", cja.GeneradoPor);
                     cmd.Parameters.AddWithValue("@totaldescuento", cja.Total_Dscuentos);
+                    cmd.Parameters.Add("@CodigoMoneda", SqlDbType.Char, 3).Value = cja.CodigoMoneda;
+                    cmd.Parameters.Add("@TipoCambio", SqlDbType.Decimal).Value = cja.TipoCambio;
+                    cmd.Parameters["@TipoCambio"].Precision = 18;
+                    cmd.Parameters["@TipoCambio"].Scale = 6;
+                    cmd.Parameters.Add("@ImporteMoneda", SqlDbType.Decimal).Value = cja.ImporteMoneda;
+                    cmd.Parameters["@ImporteMoneda"].Precision = 18;
+                    cmd.Parameters["@ImporteMoneda"].Scale = 2;
+                    cmd.Parameters.Add("@ImporteSoles", SqlDbType.Decimal).Value = cja.ImporteSoles;
+                    cmd.Parameters["@ImporteSoles"].Precision = 18;
+                    cmd.Parameters["@ImporteSoles"].Scale = 2;
 
                     cn.Open();
                     cmd.ExecuteNonQuery();
@@ -48,11 +58,9 @@ namespace CapaDatos
                 catch (Exception ex)
                 {
                     cajaSaved = false;
-                    if(cn.State == ConnectionState.Open)
-                    {
-                        cn.Close();
-                    }
-                    MessageBox.Show("Error al registrar el movimiento en caja: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                    throw new InvalidOperationException(
+                        "No se pudo registrar el movimiento en caja: " +
+                        ex.Message, ex);
                 }
             }
         }

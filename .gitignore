@@ -271,6 +271,15 @@ ServiceFabricBackup/
 *.mdf
 *.ldf
 *.ndf
+*.bak
+*.trn
+
+# Private certificates and local secrets
+*.pfx
+*.p12
+*.key
+appsettings.Local.json
+secrets.json
 
 # Business Intelligence projects
 *.rdl.data
@@ -482,3 +491,4 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+Descargas/

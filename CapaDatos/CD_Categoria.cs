@@ -75,6 +75,14 @@ namespace CapaDatos
                 da.SelectCommand.CommandType = CommandType.StoredProcedure;
                 DataTable dato = new DataTable();
                 da.Fill(dato);
+                // Compatibilidad inmediata con registros antiguos compuestos
+                // únicamente por espacios, incluso antes de aplicar migraciones.
+                foreach (DataRow fila in dato.Rows)
+                {
+                    if (String.IsNullOrWhiteSpace(
+                        Convert.ToString(fila["Categoria"])))
+                        fila["Categoria"] = "Sin categoría";
+                }
                 da = null;
                 return dato;
             }

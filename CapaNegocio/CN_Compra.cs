@@ -11,6 +11,15 @@ namespace CapaNegocio
 {
     public class CN_Compra
     {
+        public static bool CN_Existe_NroFactura_Fisica(string nroFactura)
+        {
+            if (string.IsNullOrWhiteSpace(nroFactura))
+                return false;
+
+            CD_Compra obj = new CD_Compra();
+            return obj.CD_Existe_NroFactura_Fisica(nroFactura.Trim());
+        }
+
         CD_Compra obj = new CD_Compra();
         public void CN_Registrar_Compras(Documento_Compras pro)
         {

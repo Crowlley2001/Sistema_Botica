@@ -52,12 +52,25 @@ namespace CapaPresentacion.Producto
                 item.SubItems.Add(row["Und_Min"].ToString());
                 item.SubItems.Add(row["CantidadComprar"].ToString());
 
-                // 🔥 Color si necesita urgente
-                int stock = Convert.ToInt32(row["Stock_Actual"]);
-                if (stock == 0)
+                // La alerta crítica debe permanecer visible mientras la ventana
+                // esté abierta. También incluye existencias negativas.
+                decimal stock;
+                decimal.TryParse(Convert.ToString(row["Stock_Actual"]), out stock);
+                if (stock <= 0)
                 {
-                    item.BackColor = Color.Red;
-                    item.ForeColor = Color.White;
+                    item.UseItemStyleForSubItems = true;
+                    item.BackColor = Color.FromArgb(255, 226, 226);
+                    item.ForeColor = Color.FromArgb(183, 28, 28);
+                    item.Font = new Font(lsv_reposicion.Font, FontStyle.Bold);
+
+                    // KryptonListView puede repintar cada subelemento; aplicar
+                    // el estilo a todos evita que la alerta desaparezca.
+                    foreach (ListViewItem.ListViewSubItem subItem in item.SubItems)
+                    {
+                        subItem.BackColor = item.BackColor;
+                        subItem.ForeColor = item.ForeColor;
+                        subItem.Font = item.Font;
+                    }
                 }
 
                 lsv_reposicion.Items.Add(item);

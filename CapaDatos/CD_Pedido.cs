@@ -19,6 +19,8 @@ namespace CapaDatos
         public static bool det_saved = false;
         public void CD_RegistrarPedido(Pedido objPed)
         {
+            temp_saved = false;
+            det_saved = false;
             SqlConnection cn = new SqlConnection();
             try
             {
@@ -56,6 +58,7 @@ namespace CapaDatos
         //------------------------- METODO REGISTRAR DETALLE_PEDIDO --------------------------//
         public void CD_DetallePedido(Detalle_Pedido objPed)
         {
+            det_saved = false;
             SqlConnection cn = new SqlConnection();
             try
             {
@@ -79,7 +82,7 @@ namespace CapaDatos
             }
             catch (Exception ex)
             {
-                det_saved = true;
+                det_saved = false;
                 if (cn.State == System.Data.ConnectionState.Open)
                 {
                     cn.Close();
@@ -245,13 +248,12 @@ namespace CapaDatos
                 cmd = null;
                 cn.Close();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 if (cn.State == ConnectionState.Open)
                 {
                     cn.Close();
                 }
-                // Opcional: registrar el error ex.Message para depuración
             }
             return respuesta;
         }

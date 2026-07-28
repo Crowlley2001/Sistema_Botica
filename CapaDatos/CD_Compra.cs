@@ -13,6 +13,19 @@ namespace CapaDatos
     public class CD_Compra : Conexion
     {
         public static bool saved = false;
+
+        public bool CD_Existe_NroFactura_Fisica(string nroFactura)
+        {
+            using (SqlConnection cn = new SqlConnection(conectar()))
+            using (SqlCommand cmd = new SqlCommand("sp_validar_NroFisico_Compra", cn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.Add("@Nro_Doc_fisico", SqlDbType.Char, 20).Value = nroFactura;
+                cn.Open();
+                return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+            }
+        }
+
         public void CD_Registrar_Compras(Documento_Compras pro)
         {
             SqlConnection cn = new SqlConnection();
